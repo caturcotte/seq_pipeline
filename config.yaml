@@ -1,0 +1,78 @@
+groups:
+  # progeny should be named like [prefix]_[n] where n is the ID number of that fly
+  # number of progeny
+  progeny:
+    prefix: 'ndj'
+    n: '16'
+  parents:
+    - 'w1118'
+    - 'oregonr'
+
+samples:
+  groups:
+    # progeny should be named like [prefix]_[n] where n is the ID number of that fly
+    # number of progeny
+    progeny:
+      prefix: 'ndj'
+      n: '16'
+    parents:
+      - 'w1118'
+      - 'oregonr'
+
+# chroms to call variants on
+chroms: 
+  - 'chrX'
+  - 'chr2L'
+  - 'chr2R'
+  - 'chr3L'
+  - 'chr3R'
+  - 'chr4'
+
+# number of chunks to divide chroms into to parallelize freebayes
+# if you're not using freebayes, ignore this
+
+# location of the reference genome on longleaf
+reference: '/home/cam/test/dm6.fa'
+
+sequencer: "novaseq" # hiseq, novaseq or nanopore
+paired: True
+aligner: "bowtie2" # bwa or bowtie2
+caller: "bcftools" # bcftools or freebayes
+bcftools_opts:
+  call_as_groups: True
+# mask repeats in the reference genome?
+mask_repeats: True
+
+trimming: True
+trimming_opts:
+# adapter sequences
+# nanopore data is returned demultiplexed and with adapters trimmed
+  adapters:
+    fwd: 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
+    rev: 'GATCGGAAGAGCACACGTCTGAACTCCAGTCACGGATGACTATCTCGTATGCCGTCTTCTGCTTG'
+
+freebayes_opts:
+  nchunks: 2
+
+filtering:
+  variant_quality: True
+  variant_quality_level: "strict" # options are strict, moderate, lenient or off
+# you can manually edit the quality cutoffs here
+  variant_quality_cutoff_values:
+    bcftools:
+      strict: 200
+      moderate: 100
+      lenient: 50
+    freebayes:
+      strict: 1000 * progeny[n]
+      moderate: 500 * progeny[n]
+      lenient: 100 * progeny[n]
+
+ndj_analysis: False
+ndj_analysis_opts:
+  parents:
+    ref_parent: 'w1118'
+    alt_parent: 'oregonr'
+
+# options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
+output: 'tsvs'
