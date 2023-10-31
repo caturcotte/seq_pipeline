@@ -32,6 +32,7 @@ chroms:
 # if you're not using freebayes, ignore this
 
 # location of the reference genome on longleaf
+ref_name: 'dm6'
 reference: '/home/cam/test/dm6.fa'
 
 sequencer: "novaseq" # hiseq, novaseq or nanopore
@@ -75,4 +76,4 @@ ndj_analysis_opts:
     alt_parent: 'oregonr'
 
 # options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
-output: 'tsvs'
+output: 'vcfs'

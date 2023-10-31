@@ -13,10 +13,17 @@ rule symlink_ref:
     input:
         config["reference"],
     output:
-        "resources/dm6.fa",
+        f"resources/{config['ref_name']}.fa",
     shell:
         "ln -s {input} {output}"
 
+rule symlink_ref_idx:
+    input:
+        config["reference"] + ".fai",
+    output:
+        f"resources/{config['ref_name']}.fa.fai",
+    shell:
+        "ln -s {input} {output}"
 
 rule symlink_fqs_single:
     input:
@@ -119,18 +126,6 @@ rule faidx_ref:
         "resources/{ref}.fa.masked.fai",
     shell:
         "samtools faidx {input}"
-
-
-rule make_consensus_genome:
-    input:
-        bcf=f"called/{config['ndj_analysis_opts']['parents']['ref_parent']}_norm_qflt_het.bcf",
-        bcf_idx=f"called/{config['ndj_analysis_opts']['parents']['ref_parent']}_norm_qflt_het.bcf.csi",
-        ref="resources/dm6.fa.masked",
-        ref_idx="resources/dm6.fa.masked.fai",
-    output:
-        f"resources/{config['ndj_analysis_opts']['parents']['ref_parent']}.fa",
-    shell:
-        "bcftools consensus -f {input.ref} {input.bcf} -e 'FILTER != .' -o {output}"
 
 
 rule vcf_stats:

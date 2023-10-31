@@ -4,8 +4,8 @@ rule bcftools_call_for_ref_parent:
     input:
         alns=f"mapped/{ref_parent}_sort_dedup.bam",
         aln_idxs=f"mapped/{ref_parent}_sort_dedup.bam.bai",
-        ref=get_ref,
-        ref_idx=lambda w: get_ref(w, fai=True),
+        ref=f"resources/{config['ref_name']}.fa",
+        ref_idx=f"resources/{config['ref_name']}.fa.fai",
     output:
         f"called/ref_parent/{ref_parent}_unprocessed.bcf",
     shell:
@@ -14,7 +14,8 @@ rule bcftools_call_for_ref_parent:
 rule filter_ref_parent:
     input:
         bcf=f"called/ref_parent/{ref_parent}_unprocessed.bcf",
-        ref=get_ref,
+        ref=f"resources/{config['ref_name']}.fa",
+        ref_idx=f"resources/{config['ref_name']}.fa.fai",
     output:
         bcf=f"called/ref_parent/{ref_parent}_norm_flt.bcf",
         csi=f"called/ref_parent/{ref_parent}_norm_flt.bcf.csi",
@@ -22,6 +23,7 @@ rule filter_ref_parent:
         time="2:00:00",
     params:
         extra="--write-index",
+        qual_cutoff=lambda w: get_qual_cutoff(w)
     shell:
         "bcftools norm -ad all -f {input.ref} {input.bcf} | bcftools filter -i 'QUAL < {params.qual_cutoff}' -s lowQual -o {output.bcf} --write-index -"
 
@@ -29,8 +31,8 @@ rule make_ref_parent_genome:
     input:
         bcf=f"called/ref_parent/{ref_parent}_norm_flt.bcf",
         csi=f"called/ref_parent/{ref_parent}_norm_flt.bcf.csi",
-        ref=get_ref,
-        ref_idx=lambda w: get_ref(w, fai=True)
+        ref=f"resources/{config['ref_name']}.fa",
+        ref_idx=f"resources/{config['ref_name']}.fa.fai",
     output:
         f"resources/{ref_parent}.fa",
     shell:

@@ -48,6 +48,18 @@ rule format_bcf:
         "bcftools query -f {params.format} -o {output}"
 
 
+rule make_consensus_genome:
+    input:
+        bcf=get_final_bcf,
+        bcf_idx=lambda w: get_final_bcf(w, csi=True),
+        ref=get_ref,
+        ref_idx=lambda w: get_ref(w, fai=True)
+    output:
+        "seqs/{sample}.fa"
+    shell:
+        "bcftools consensus -f {input.ref} {input.bcf} -e 'FILTER != .' -o {output}"
+
+
 rule merge_tsvs:
     input:
         get_tsvs_to_merge,
