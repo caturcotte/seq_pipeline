@@ -6,5 +6,7 @@ rule bcftools_call_single:
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
         "called/{sample}_bcftools_unprocessed.bcf",
+    params:
+        regions=lambda w: get_regions_to_call(w),
     shell:
-        "bcftools call -cv -f {input.ref} {input.alns} -o {output}"
+        "bcftools call -cv -f {input.ref} {input.alns} -r {params.regions} -o {output}"

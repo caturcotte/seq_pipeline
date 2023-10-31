@@ -1,14 +1,3 @@
-def get_file_locations(w, end=None):
-    sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    if config["paired"]:
-        if end == "r1":
-            return sample["path_to_reads_1"]
-        elif end == "r2":
-            return sample["path_to_reads_2"]
-    else:
-        return sample["path_to_reads"]
-
-
 rule symlink_ref:
     input:
         config["reference"],
@@ -16,6 +5,7 @@ rule symlink_ref:
         f"resources/{config['ref_name']}.fa",
     shell:
         "ln -s {input} {output}"
+
 
 rule symlink_ref_idx:
     input:
@@ -25,6 +15,7 @@ rule symlink_ref_idx:
     shell:
         "ln -s {input} {output}"
 
+
 rule symlink_fqs_single:
     input:
         get_file_locations,
@@ -33,10 +24,11 @@ rule symlink_fqs_single:
     shell:
         "ln -s {input} {output}"
 
+
 rule generate_freebayes_regions:
     input:
         ref=get_ref_to_generate_regions,
-        idx=lambda w: get_ref_to_generate_regions(w, fai=True)
+        idx=lambda w: get_ref_to_generate_regions(w, fai=True),
     output:
         regions=expand("resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
     params:
@@ -46,6 +38,8 @@ rule generate_freebayes_regions:
         mem_mb=100000,
     shell:
         "scripts/fasta_generate_regions.py --chunks --bed=resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
+
+
 rule bcftools_index:
     input:
         "called/{sample}_{caller}_unprocessed.bcf",
@@ -92,14 +86,16 @@ rule mask_repeats:
     shell:
         "RepeatMasker -species drosophila -pa {threads} -dir resources/ -s {input}"
 
+
 rule minimap2_idx:
     input:
         "{prefix}",
     output:
-        "{prefix}.mmi"
+        "{prefix}.mmi",
     threads: 8
     shell:
         "minimap2 -d {input} > {output}"
+
 
 rule bowtie2_build:
     input:

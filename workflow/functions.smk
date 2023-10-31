@@ -2,22 +2,21 @@ import pandas as pd
 import re
 
 
-prefix = config["groups"]["progeny"]["prefix"]
 reference = config["reference"]
 chunks = list(range(1, config["freebayes_opts"]["nchunks"] + 1))
 chroms = config["chroms"]
-if config['ndj_analysis']:
+if config["ndj_analysis"]:
     ref_names = [
-        config['ref_name'],
-        config['ndj_analysis_opts']['parents']['ref_parent']
+        config["ref_name"],
+        config["ndj_analysis_opts"]["parents"]["ref_parent"],
     ]
 else:
-    ref_names = [config['ref_name']]
+    ref_names = [config["ref_name"]]
 
-if config["paired"]:
-    seq_type = "PAIRED_END"
-else:
+if config["sequencer"] == "nanopore":
     seq_type = "SINGLE_END"
+else:
+    seq_type = "PAIRED_END"
 sample_sheet = pd.read_excel("sample_sheet.xlsx", sheet_name=seq_type)
 samples = list(sample_sheet["sample"])
 try:
@@ -31,6 +30,21 @@ except:
         raise ValueError(
             "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet"
         )
+
+
+def get_regions_to_call(w):
+    return ",".join(config["chroms"])
+
+
+def get_file_locations(w, end=None):
+    sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
+    if config["sequencer"] != "nanopore":
+        if end == "r1":
+            return sample["path_to_reads_1"]
+        elif end == "r2":
+            return sample["path_to_reads_2"]
+    else:
+        return sample["path_to_reads"]
 
 
 def get_freebayes_vcfs(w, chunks=chunks, chroms=chroms, csi=False):
@@ -63,7 +77,7 @@ def get_final_output(w):
         vcfs = []
         for i in samples:
             vcfs.append(get_final_bcf(w, s=i, csi=True))
-        return vcfs 
+        return vcfs
     elif config["output"] == "alignments":
         return expand("mapped/{sample}_sort_dedup.bam.bai", sample=samples)
 
@@ -158,7 +172,7 @@ def get_caller(w):
 
 
 def get_alns_for_calling(w, groups=groups, bai=False):
-    if config['bcftools_opts']["call_as_groups"]:
+    if config["bcftools_opts"]["call_as_groups"]:
         return [f"mapped/{i}_sort_dedup.bam" for i in groups[w.group]]
     else:
         return f"mapped/{w.sample}_sort_dedup.bam"
@@ -168,6 +182,7 @@ def get_qual_cutoff(w):
     cutoff_level = config["filtering"]["variant_quality_level"]
     caller = config["caller"]
     return config["filtering"]["variant_quality_cutoff_values"][caller][cutoff_level]
+
 
 def get_final_bcf(w, s=None, csi=False):
     if s == None:

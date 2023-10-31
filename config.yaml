@@ -1,46 +1,13 @@
-groups:
-  # progeny should be named like [prefix]_[n] where n is the ID number of that fly
-  # number of progeny
-  progeny:
-    prefix: 'ndj'
-    n: '16'
-  parents:
-    - 'w1118'
-    - 'oregonr'
-
-samples:
-  groups:
-    # progeny should be named like [prefix]_[n] where n is the ID number of that fly
-    # number of progeny
-    progeny:
-      prefix: 'ndj'
-      n: '16'
-    parents:
-      - 'w1118'
-      - 'oregonr'
-
-# chroms to call variants on
-chroms: 
-  - 'chrX'
-  - 'chr2L'
-  - 'chr2R'
-  - 'chr3L'
-  - 'chr3R'
-  - 'chr4'
-
-# number of chunks to divide chroms into to parallelize freebayes
-# if you're not using freebayes, ignore this
-
 # location of the reference genome on longleaf
 ref_name: 'dm6'
-reference: '/home/cam/test/dm6.fa'
+reference: '/proj/seq/data/dm6/UCSC/Sequence/WholeGenomeFasta/genome.fa'
 
+# Illumina sequences are assumed to be paired
 sequencer: "novaseq" # hiseq, novaseq or nanopore
-paired: True
-aligner: "bowtie2" # bwa or bowtie2
+aligner: "bwa" # bwa or bowtie2
 caller: "bcftools" # bcftools or freebayes
 bcftools_opts:
-  call_as_groups: True
+  call_as_groups: False
 # mask repeats in the reference genome?
 mask_repeats: True
 
@@ -51,6 +18,14 @@ trimming_opts:
   adapters:
     fwd: 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
     rev: 'GATCGGAAGAGCACACGTCTGAACTCCAGTCACGGATGACTATCTCGTATGCCGTCTTCTGCTTG'
+
+chroms:
+  - 'chrX'
+  - 'chr2L'
+  - 'chr2R'
+  - 'chr3L'
+  - 'chr3R'
+  - 'chr4'
 
 freebayes_opts:
   nchunks: 2
@@ -76,4 +51,4 @@ ndj_analysis_opts:
     alt_parent: 'oregonr'
 
 # options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
-output: 'vcfs'
+output: 'consensus'

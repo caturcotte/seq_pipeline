@@ -1,4 +1,5 @@
-ref_parent = config['ndj_analysis_opts']['parents']['ref_parent']
+ref_parent = config["ndj_analysis_opts"]["parents"]["ref_parent"]
+
 
 rule bcftools_call_for_ref_parent:
     input:
@@ -10,6 +11,7 @@ rule bcftools_call_for_ref_parent:
         f"called/ref_parent/{ref_parent}_unprocessed.bcf",
     shell:
         "bcftools call -cv -f {input.ref} {input.alns} -o {output}"
+
 
 rule filter_ref_parent:
     input:
@@ -23,9 +25,10 @@ rule filter_ref_parent:
         time="2:00:00",
     params:
         extra="--write-index",
-        qual_cutoff=lambda w: get_qual_cutoff(w)
+        qual_cutoff=lambda w: get_qual_cutoff(w),
     shell:
         "bcftools norm -ad all -f {input.ref} {input.bcf} | bcftools filter -i 'QUAL < {params.qual_cutoff}' -s lowQual -o {output.bcf} --write-index -"
+
 
 rule make_ref_parent_genome:
     input:
@@ -38,11 +41,14 @@ rule make_ref_parent_genome:
     shell:
         "bcftools consensus -f {input.ref} {input.bcf} -e 'FILTER != .' -o {output}"
 
+
 rule get_unique_snps_progeny:
     input:
         progeny=get_final_bcf,
         idx=lambda w: get_final_bcf(w, csi=True),
-        alt_parent="called/" + config["ndj_analysis_opts"]["parents"]["alt_parent"] + "_norm_qflt_het.bcf",
+        alt_parent="called/"
+        + config["ndj_analysis_opts"]["parents"]["alt_parent"]
+        + "_norm_qflt_het.bcf",
     output:
         expand("called/isecs/{{sample}}/000{num}.vcf", num=[0, 1, 2, 3]),
     shell:

@@ -18,8 +18,8 @@ rule filter_low_quality:
         bcf="called/{sample}_norm.bcf",
         csi="called/{sample}_norm.bcf.csi",
     output:
-        bcf=temp("called/{sample}_norm_qflt.bcf"),
-        csi=temp("called/{sample}_norm_qflt.bcf.csi"),
+        bcf="called/{sample}_norm_qflt.bcf",
+        csi="called/{sample}_norm_qflt.bcf.csi",
     params:
         qual_cutoff=get_qual_cutoff,
     shell:
@@ -53,9 +53,9 @@ rule make_consensus_genome:
         bcf=get_final_bcf,
         bcf_idx=lambda w: get_final_bcf(w, csi=True),
         ref=get_ref,
-        ref_idx=lambda w: get_ref(w, fai=True)
+        ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        "seqs/{sample}.fa"
+        "seqs/{sample}.fa",
     shell:
         "bcftools consensus -f {input.ref} {input.bcf} -e 'FILTER != .' -o {output}"
 
