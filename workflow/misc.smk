@@ -7,13 +7,25 @@ rule symlink_ref:
         "ln -s {input} {output}"
 
 
-rule symlink_ref_idx:
+rule mask_repeats:
     input:
-        config["reference"] + ".fai",
+        "resources/{ref}.fa",
     output:
-        f"resources/{config['ref_name']}.fa.fai",
+        "resources/{ref}.fa.masked",
+    threads: 16
     shell:
-        "ln -s {input} {output}"
+        "RepeatMasker -species 7227 -pa {threads} -dir resources/ -s {input}"
+
+
+rule faidx_ref:
+    input:
+        "{prefix}",
+    output:
+        "{prefix}.fai",
+    conda:
+        "envs/samtools.yaml"
+    shell:
+        "samtools faidx {input}"
 
 
 rule symlink_fqs_single:
@@ -23,30 +35,6 @@ rule symlink_fqs_single:
         "reads/{sample}.fq.gz",
     shell:
         "ln -s {input} {output}"
-
-
-rule generate_freebayes_regions:
-    input:
-        ref=get_ref_to_generate_regions,
-        idx=lambda w: get_ref_to_generate_regions(w, fai=True),
-    output:
-        regions=expand("resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
-    params:
-        nchunks=config["freebayes_opts"]["nchunks"],
-    resources:
-        time="5-0",
-        mem_mb=100000,
-    shell:
-        "scripts/fasta_generate_regions.py --chunks --bed=resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
-
-
-rule bcftools_index:
-    input:
-        "called/{sample}_{caller}_unprocessed.bcf",
-    output:
-        "called/{sample}_{caller}_unprocessed.bcf.csi",
-    shell:
-        "bcftools index {input}"
 
 
 rule symlink_fqs_paired:
@@ -68,23 +56,22 @@ rule trim_adapters:
         fastq2="reads/{sample}_2_unsorted.fq.gz",
         qc="reads/{sample}.qc.txt",
     threads: 8
-    resources:
-        mem_mb=10000,
     params:
         adapters=f"-a {config['trimming_opts']['adapters']['fwd']} -g {config['trimming_opts']['adapters']['rev']} -A {config['trimming_opts']['adapters']['fwd']} -G {config['trimming_opts']['adapters']['rev']}",
         extra="--minimum-length 1 -q 20",
     wrapper:
-        "v2.3.1/bio/cutadapt/pe"
+        "v2.6.0/bio/cutadapt/pe"
 
 
-rule mask_repeats:
+rule bwa_idx:
     input:
-        "resources/{ref}.fa",
+        "{prefix}",
     output:
-        "resources/{ref}.fa.masked",
-    threads: 8
+        multiext("{prefix}", ".ann", ".bwt", ".pac", ".sa", ".amb"),
+    conda:
+        "envs/bwa.yaml"
     shell:
-        "RepeatMasker -species drosophila -pa {threads} -dir resources/ -s {input}"
+        "bwa index {input}"
 
 
 rule minimap2_idx:
@@ -93,16 +80,18 @@ rule minimap2_idx:
     output:
         "{prefix}.mmi",
     threads: 8
+    conda:
+        "envs/minimap2.yaml"
     shell:
         "minimap2 -d {input} > {output}"
 
 
 rule bowtie2_build:
     input:
-        "resources/{ref}.fa.masked",
+        "{prefix}",
     output:
         multiext(
-            "resources/{ref}.fa.masked",
+            "{prefix}",
             ".1.bt2",
             ".2.bt2",
             ".3.bt2",
@@ -110,25 +99,42 @@ rule bowtie2_build:
             ".rev.1.bt2",
             ".rev.2.bt2",
         ),
-    threads: 8
     wrapper:
         "v2.6.0/bio/bowtie2/build"
 
 
-rule faidx_ref:
+rule generate_freebayes_regions:
     input:
-        "resources/{ref}.fa.masked",
+        ref=get_ref_to_generate_regions,
+        idx=lambda w: get_ref_to_generate_regions(w, fai=True),
     output:
-        "resources/{ref}.fa.masked.fai",
+        regions=expand("resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
+    params:
+        nchunks=config["freebayes_opts"]["nchunks"],
+    resources:
+        time="5-0",
     shell:
-        "samtools faidx {input}"
+        "scripts/fasta_generate_regions.py --chunks --bed=resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
+
+
+rule bcftools_index:
+    input:
+        "called/{sample}_{caller}_unprocessed.bcf",
+    output:
+        "called/{sample}_{caller}_unprocessed.bcf.csi",
+    conda:
+        "envs/bcftools.yaml"
+    shell:
+        "bcftools index {input}"
 
 
 rule vcf_stats:
     input:
         bcf="called/{sample}.bcf",
-        ref=reference,
+        ref=get_ref,
     output:
         "metrics/{sample}.bcf.stats",
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools stats -F {input.ref} -s - {input.bcf} > {output}"

@@ -8,5 +8,8 @@ rule bcftools_call_single:
         "called/{sample}_bcftools_unprocessed.bcf",
     params:
         regions=lambda w: get_regions_to_call(w),
+    threads: 16
+    conda:
+        "envs/bcftools.yaml"
     shell:
-        "bcftools call -cv -f {input.ref} {input.alns} -r {params.regions} -o {output}"
+        "bcftools call -cv -f {input.ref} {input.alns} -r {params.regions} -o {output} --threads {threads}"

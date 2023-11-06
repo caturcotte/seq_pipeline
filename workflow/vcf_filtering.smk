@@ -7,10 +7,8 @@ rule bcftools_norm:
         csi=temp("called/{sample}_norm.bcf.csi"),
     resources:
         time="2:00:00",
-    params:
-        extra="--write-index",
-    wrapper:
-        "v2.3.1/bio/bcftools/norm"
+    shell:
+        "bcftools norm -f {input.ref} -m - -a --write-index -o {output.bcf} {input.calls}"
 
 
 rule filter_low_quality:
@@ -22,6 +20,8 @@ rule filter_low_quality:
         csi="called/{sample}_norm_qflt.bcf.csi",
     params:
         qual_cutoff=get_qual_cutoff,
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools filter -i 'QUAL < 150' -s lowQual -o {output.bcf} --write-index {input.bcf}"
 
@@ -33,6 +33,8 @@ rule filter_het:
     output:
         bcf="called/{sample}_norm_qflt_het.bcf",
         csi="called/{sample}_norm_qflt_het.bcf.csi",
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools filter -i 'GT != 1/1' -s het -o {output.bcf} --write-index {input.bcf}"
 
@@ -44,6 +46,8 @@ rule format_bcf:
         "tsvs/{sample}.tsv",
     params:
         format=get_query_format,
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools query -f {params.format} -o {output}"
 
@@ -56,6 +60,8 @@ rule make_consensus_genome:
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
         "seqs/{sample}.fa",
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools consensus -f {input.ref} {input.bcf} -e 'FILTER != .' -o {output}"
 

@@ -7,11 +7,11 @@ cluster:
     --job-name=smk-{rule}-{wildcards}
     --output=logs/{rule}/{rule}-{wildcards}.out
     --time={resources.time}
-    # --mail-type="FAIL"
-    # --mail-user="cannecar@ad.unc.edu"
+    --mail-type="FAIL"
+    --mail-user="cannecar@ad.unc.edu"
 default-resources:
   - partition=general
-  - mem_mb=1000
+  # - mem_mb=1000
   - time="1:00:00"
 restart-times: 0
 max-jobs-per-second: 10

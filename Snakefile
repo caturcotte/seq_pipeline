@@ -25,12 +25,18 @@ if config["ndj_analysis"]:
 
     include: "workflow/ndj_analysis.smk"
 
+localrules:
+    all,
+    symlink_fqs_single,
+    symlink_ref,
+    symlink_fqs_paired
 
 wildcard_constraints:
     group="|".join([i for i in groups.keys()]),
     sample="|".join([i for i in samples]),
     chrom="|".join([i for i in chroms]),
     ref="|".join([i for i in ref_names]),
+    masked="|".join(["masked", ""]),
 
 
 rule all:

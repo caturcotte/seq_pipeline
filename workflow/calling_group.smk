@@ -8,8 +8,11 @@ rule bcftools_group_call:
         "called/{group}/bcftools_unprocessed.bcf",
     params:
         regions=lambda w: get_regions_to_call(w),
+    threads: 16
+    conda:
+        "envs/bcftools.yaml"
     shell:
-        "bcftools call -cv -f {input.ref} {input.alns} -r {params.regions} -o {output}"
+        "bcftools call -cv -f {input.ref} {input.alns} -r {params.regions} -o {output} --threads {threads}"
 
 
 rule freebayes:
@@ -26,8 +29,9 @@ rule freebayes:
         "logs/freebayes/{chrom}_{group}_{i}.log",
     threads: 1
     resources:
-        mem_mb=50000,
         time="1-0",
+    conda:
+        "envs/freebayes.yaml"
     shell:
         "freebayes -f {input.ref} -t {input.region} {input.alns} | bcftools view -Ob -o {output} --write-index"
 
@@ -40,7 +44,6 @@ rule concat_freebayes:
         temp("called/{group}/freebayes_unprocessed.bcf"),
     log:
         "logs/concat_vcfs/{group}.log",
-    threads: 4
     conda:
         "envs/concat_vcfs.yaml"
     shell:
@@ -54,5 +57,7 @@ rule separate_into_samples:
         "called/{sample}_{caller}_unprocessed.bcf",
     resources:
         time="2:00:00",
+    conda:
+        "envs/bcftools.yaml"
     shell:
         "bcftools view -s {wildcards.sample} -a -o {output} {input}"
