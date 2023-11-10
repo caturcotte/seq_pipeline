@@ -17,12 +17,12 @@ mask_repeats: True
 
 # trim adapters off of reads?
 # note: nanopore data is returned demultiplexed and with adapters trimmed
-trimming: True
+trim_adapters: True
 trimming_opts:
   adapters:
 # adapter sequences
-    fwd: 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
-    rev: 'GATCGGAAGAGCACACGTCTGAACTCCAGTCACGGATGACTATCTCGTATGCCGTCTTCTGCTTG'
+    read_1: 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
+    read_2: 'GATCGGAAGAGCACACGTCTGAACTCCAGTCACGGATGACTATCTCGTATGCCGTCTTCTGCTTG'
 
 # which chromosomes to call variants for
 chroms:

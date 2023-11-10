@@ -1,7 +1,7 @@
 rule bwa_mem:
     input:
-        r1="reads/{sample}_1.fq.gz",
-        r2="reads/{sample}_2.fq.gz",
+        r1=lambda w: get_reads(w, r=1),
+        r2=lambda w: get_reads(w, r=2),
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
@@ -17,8 +17,8 @@ rule bwa_mem:
 
 rule bowtie2:
     input:
-        r1="reads/{sample}_1.fq.gz",
-        r2="reads/{sample}_2.fq.gz",
+        r1=lambda w: get_reads(w, r=1),
+        r2=lambda w: get_reads(w, r=2),
         ref=get_ref_bowtie2,
     output:
         sam="mapped/{sample}_bt2.sam",
@@ -56,8 +56,8 @@ rule fix_mate_pairs:
         temp("mapped/{sample}.bam"),
     resources:
         time="2:00:00",
-    conda:
-        "envs/samtools.yaml"
+    # conda:
+    #     "envs/samtools.yaml"
     shell:
         "samtools fixmate -m -O bam,level=1 {input} {output}"
 
@@ -67,11 +67,11 @@ rule samtools_sort:
         "mapped/{sample}.bam",
     output:
         temp("mapped/{sample}_sort.bam"),
-    threads: 8
+    threads: 4
     resources:
         time="2:00:00",
-    conda:
-        "envs/samtools.yaml"
+    # conda:
+    #     "envs/samtools.yaml"
     shell:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
 
@@ -82,16 +82,16 @@ rule mark_duplicates:
         ref=get_ref,
     output:
         bam="mapped/{sample}_sort_dedup.bam",
-        metrics="metrics/{sample}_dedup_metrics.txt",
-    threads: 8
+        # metrics="metrics/{sample}_dedup_metrics.txt",
+    threads: 4
     resources:
         time="1-0",
-    params:
-        d=get_opt_dup_distance,
-    conda:
-        "envs/samtools.yaml"
+    # params:
+    #     d=get_opt_dup_distance,
+    # conda:
+    #     "envs/samtools.yaml"
     shell:
-        "samtools markdup -d {params.d} -r -f {output.metrics} -z on --threads {threads} {input.bam} {output.bam}"
+        "sambamba markdup -r -t {threads} {input.bam} {output.bam}"
 
 
 rule samtools_index:
@@ -101,7 +101,7 @@ rule samtools_index:
         "mapped/{sample}_sort_dedup.bam.bai",
     resources:
         time="2:00:00",
-    conda:
-        "envs/samtools.yaml"
+    # conda:
+    #     "envs/samtools.yaml"
     shell:
-        "samtools index {input}"
+        "sambamba index {input}"

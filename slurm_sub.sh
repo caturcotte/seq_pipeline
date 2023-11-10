@@ -34,4 +34,6 @@
 # cp -n /proj/sekellab/projects/OregonR_Hawley_isogenized/oregonR.bam output/aligments/oregonr.bam
 # cp -rn /proj/sekellab/projects/ndj_progeny/usftp21.novogene.com/01.RawData/ndj_+([0-9]) input/
 module load repeatmasker
+module load samtools
+module load sambamba
 snakemake --profile=slurm --use-conda

@@ -33,6 +33,8 @@ sample_sheet = pd.read_excel("sample_sheet.xlsx", sheet_name=seq_type)
 
 # list of all of the samples from the sheet
 samples = list(sample_sheet["sample"])
+# samples = list(sample_sheet.loc[sample_sheet["sample"] != 'w1118', 'sample'])
+# samples.pop(config["ndj_analysis_opts"]["parents"]["ref_parent"])
 
 # if not calling as groups, groups can be left blank in sample sheet
 # if not, throw an error if any are left blank
@@ -49,6 +51,12 @@ except:
         )
 
 
+def get_adapter_seqs(w):
+    r1 = sample_sheet.loc[sample_sheet["sample"] == w.sample, "read_1_adapter"]
+    r2 = sample_sheet.loc[sample_sheet["sample"] == w.sample, "read_2_adapter"]
+    return f"-a {r1.iloc[0]} -A {r2.iloc[0]}"
+
+
 # get required names of aligned reads, determines which aligner is used
 def get_aligned_reads(w):
     if config["aligner"].lower() == "bwa":
@@ -62,9 +70,15 @@ def get_aligned_reads(w):
             "Invalid aligner in config.yaml: options are bwa, bowtie2 or minimap2"
         )
 
+def get_alns_for_pileup(w, bai=False):
+    if config['caller'] == 'freebayes' or config['bcftools_opts']['call_as_groups']:
+        return [f"mapped/{i}_sort_dedup.bam" for i in groups[w.group]]
+    else:
+        return f'mapped/{w.sample_or_group}_sort_dedup.bam'
+
 
 # return either bams for all of the samples in the group or individual sample bams
-def get_alns_for_calling(w, groups=groups, bai=False):
+def get_alns_in_group(w, groups=groups, bai=False):
     if config["bcftools_opts"]["call_as_groups"]:
         return [f"mapped/{i}_sort_dedup.bam" for i in groups[w.group]]
     else:
@@ -74,6 +88,13 @@ def get_alns_for_calling(w, groups=groups, bai=False):
 # get name of variant caller from config file
 def get_caller(w):
     return f"called/{w.sample}_{config['caller']}_unprocessed.bcf"
+
+
+def get_call_type(w):
+    if config['caller'] == 'freebayes' or config['bcftools_opts']['call_as_groups']:
+        return f'.tmp/group_call_{w.sample}_{w.caller}.txt'
+    else:
+        return f'.tmp/single_call_{w.sample}.txt'
 
 
 # locate reads based on the location(s) listed in the sample sheet
@@ -162,7 +183,8 @@ def get_query_format(w):
         add_cols = [
             "%FORMAT/DP",
             "%AF_TOTAL",
-            "%AO_TOTAL" "%DP_TOTAL",
+            "%AO_TOTAL",
+            "%DP_TOTAL",
             "%RO_TOTAL",
             "%TYPE",
             "%DP",
@@ -172,7 +194,16 @@ def get_query_format(w):
     elif config["caller"] == "bcftools":
         add_cols = ["%DP", "%PL", "%DP4{0}", "%DP4{1}", "%DP4{2}", "%DP4{3}"]
     [cols.append(i) for i in add_cols]
-    return r"\t".join(cols) + r"\n"
+    query = '\t'.join(cols)
+    return '[' + query + ']\n' 
+
+
+def get_reads(w, r=None):
+    sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
+    if sample['trim'].any():
+        return "reads/{sample}_" + f"{r}_trimmed.fq.gz"
+    else:
+        return "reads/{sample}_" + f"{r}.fq.gz"
 
 
 # return reference file, name depends on whether repeats are being masked
@@ -189,13 +220,12 @@ def get_ref(w, fai=False):
             basename += "dm6"
         else:
             basename += config["ndj_analysis_opts"]["parents"]["ref_parent"]
-    final = [basename, "fa"]
-    # final.append("fa")
     if config["mask_repeats"]:
-        final.append("masked")
+        basename += "_masked"
+    basename += ".fa"
     if fai:
-        final.append("fai")
-    return ".".join(final)
+        basename += ".fai"
+    return basename
 
 
 # get ref index for bowtie2
@@ -216,6 +246,17 @@ def get_ref_bwa(w):
     return multiext(get_ref(w), ".amb", ".ann", ".bwt", ".pac", ".sa")
 
 
+def get_ref_for_ref_parent(w, fai=False):
+    if config["mask_repeats"]:
+        base = f"resources/{config['ref_name']}_masked.fa"
+    else:
+        base = f"resources/{config['ref_name']}.fa"
+    if fai:
+        return base + ".fai"
+    else:
+        return base
+
+
 # get ref index for minimap2
 def get_ref_minimap2(w):
     return get_ref(w) + ".mmi"
@@ -225,7 +266,7 @@ def get_ref_minimap2(w):
 # no sample or group wildcard in this rule so relying on ref wildcard instead
 def get_ref_to_generate_regions(w, fai=False):
     if config["mask_repeats"]:
-        base = f"resources/{w.ref}.fa.masked"
+        base = f"resources/{w.ref}_masked.fa"
     else:
         base = f"resources/{w.ref}.fa"
     if fai:
@@ -238,7 +279,7 @@ def get_region_from_sample(w):
     basename = get_ref(w)
     region_basename = re.sub(r"(^resources/)", r"\1regions/", basename)
     if config["mask_repeats"]:
-        region_basename = re.sub(r"(.fa)(.masked)*", r"", region_basename)
+        region_basename = re.sub(r"(.masked)*(.fa)", r"", region_basename)
     return region_basename + f".{w.chrom}.region.{w.i}.bed"
 
 
@@ -246,6 +287,11 @@ def get_region_from_sample(w):
 def get_regions_to_call(w):
     return ",".join(config["chroms"])
 
+# def get_alns_for_mpileup(w):
+#     if not config['bcftools']['call_as_group']:
+#         return "mapped/{sample}_sort_dedup.bam"
+#     else:
+#         return get_alns_in_group(w) 
 
 # get all of the tsv files to merge into one
 def get_tsvs_to_merge(w, samples=samples):
@@ -258,4 +304,3 @@ def get_tsvs_to_merge(w, samples=samples):
     else:
         tsvs = [i for i in samples]
     return expand("tsvs/{sample}.tsv", sample=tsvs)
-

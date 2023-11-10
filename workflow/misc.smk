@@ -17,13 +17,22 @@ rule mask_repeats:
         "RepeatMasker -species 7227 -pa {threads} -dir resources/ -s {input}"
 
 
+rule mv_masked_ref:
+    input:
+        "resources/{ref}.fa.masked",
+    output:
+        "resources/{ref}_masked.fa",
+    shell:
+        "mv {input} {output}"
+
+
 rule faidx_ref:
     input:
         "{prefix}",
     output:
         "{prefix}.fai",
-    conda:
-        "envs/samtools.yaml"
+    # conda:
+    #     "envs/samtools.yaml"
     shell:
         "samtools faidx {input}"
 
@@ -52,12 +61,12 @@ rule trim_adapters:
     input:
         ["reads/{sample}_1.fq.gz", "reads/{sample}_2.fq.gz"],
     output:
-        fastq1="reads/{sample}_1_unsorted.fq.gz",
-        fastq2="reads/{sample}_2_unsorted.fq.gz",
+        fastq1="reads/{sample}_1_trimmed.fq.gz",
+        fastq2="reads/{sample}_2_trimmed.fq.gz",
         qc="reads/{sample}.qc.txt",
-    threads: 8
+    threads: 2
     params:
-        adapters=f"-a {config['trimming_opts']['adapters']['fwd']} -g {config['trimming_opts']['adapters']['rev']} -A {config['trimming_opts']['adapters']['fwd']} -G {config['trimming_opts']['adapters']['rev']}",
+        adapters=lambda w: get_adapter_seqs(w),
         extra="--minimum-length 1 -q 20",
     wrapper:
         "v2.6.0/bio/cutadapt/pe"
@@ -119,11 +128,11 @@ rule generate_freebayes_regions:
 
 rule bcftools_index:
     input:
-        "called/{sample}_{caller}_unprocessed.bcf",
+        "{prefix}",
     output:
-        "called/{sample}_{caller}_unprocessed.bcf.csi",
-    conda:
-        "envs/bcftools.yaml"
+        "{prefix}.csi",
+    # conda:
+    #     "envs/bcftools.yaml"
     shell:
         "bcftools index {input}"
 
@@ -134,7 +143,7 @@ rule vcf_stats:
         ref=get_ref,
     output:
         "metrics/{sample}.bcf.stats",
-    conda:
-        "envs/bcftools.yaml"
+    # conda:
+    #     "envs/bcftools.yaml"
     shell:
         "bcftools stats -F {input.ref} -s - {input.bcf} > {output}"
