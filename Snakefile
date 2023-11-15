@@ -9,9 +9,6 @@ include: "workflow/alignment.smk"
 include: "workflow/calling.smk"
 include: "workflow/misc.smk"
 include: "workflow/vcf_filtering.smk"
-if config["ndj_analysis"]:
-
-    include: "workflow/ndj_analysis.smk"
 
 
 localrules:
@@ -25,8 +22,9 @@ localrules:
 wildcard_constraints:
     group="|".join([i for i in groups.keys()]),
     sample="|".join([i for i in samples]),
-    chrom="|".join([i for i in chroms]),
-    ref="|".join([i for i in ref_names]),
+    ref=config['ref_name']
+    # chrom="|".join([i for i in chroms]),
+    # ref="|".join([i for i in ref_names]),
 
 
 rule all:

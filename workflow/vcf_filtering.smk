@@ -7,8 +7,6 @@ rule bcftools_norm:
         bcf=temp("data/calls/{sample}_norm.bcf"),
     resources:
         time="2:00:00",
-    # conda:
-    #     "envs/bcftools.yaml"
     shell:
         "bcftools norm -f {input.ref} -m '-' -Ob -o {output.bcf} {input.calls}"
 
@@ -21,10 +19,7 @@ rule filter_low_quality:
         bcf="data/calls/{sample}_norm_qflt.bcf",
     params:
         qual_cutoff=get_qual_cutoff,
-    # conda:
-    #     "envs/bcftools.yaml"
     shell:
-        # "vembrane tag -t low_qual='QUAL >= {params.qual_cutoff}' -O bcf {input.bcf}"
         "bcftools filter -i 'QUAL>{params.qual_cutoff}' -g 5 -Ob -o {output.bcf} {input.bcf}"
 
 
@@ -34,8 +29,6 @@ rule filter_het:
         csi="data/calls/{sample}_norm_qflt.bcf.csi",
     output:
         bcf="data/calls/{sample}_norm_qflt_het.bcf",
-    # conda:
-    #     "envs/bcftools.yaml"
     shell:
         "bcftools filter -i 'GT=\"hom\"' -Ob -o {output} {input.bcf}"
 
@@ -48,8 +41,6 @@ rule format_bcf:
         "data/tsvs/{sample}.tsv",
     params:
         format=get_query_format,
-    # conda:
-    #     "envs/bcftools.yaml"
     shell:
         "bcftools query -f '{params.format}' -o {output} {input.bcf}"
 
@@ -62,10 +53,6 @@ rule make_consensus_genome:
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
         "data/seqs/{sample}.fa",
-    # conda:
-    #     "envs/bcftools.yaml"
-    # params:
-        # flt="FILTER!=\".\""
     shell:
         "bcftools consensus -f {input.ref} {input.bcf} -o {output}"
 

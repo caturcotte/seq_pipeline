@@ -48,8 +48,8 @@ rule symlink_fqs_single:
 
 rule symlink_fqs_paired:
     input:
-        r1=lambda w: get_file_locations(w, end="r1"),
-        r2=lambda w: get_file_locations(w, end="r2"),
+        r1=lambda w: get_file_locations(w, read="1"),
+        r2=lambda w: get_file_locations(w, read="2"),
     output:
         r1="data/reads/{sample}_1.fq.gz",
         r2="data/reads/{sample}_2.fq.gz",
@@ -59,7 +59,7 @@ rule symlink_fqs_paired:
 
 rule trim_adapters:
     input:
-        ["data/reads/{sample}_1.fq.gz", "reads/{sample}_2.fq.gz"],
+        ["data/reads/{sample}_1.fq.gz", "data/reads/{sample}_2.fq.gz"],
     output:
         fastq1="data/reads/{sample}_1_trimmed.fq.gz",
         fastq2="data/reads/{sample}_2_trimmed.fq.gz",
@@ -112,18 +112,18 @@ rule bowtie2_build:
         "v2.6.0/bio/bowtie2/build"
 
 
-rule generate_freebayes_regions:
-    input:
-        ref=get_ref_to_generate_regions,
-        idx=lambda w: get_ref_to_generate_regions(w, fai=True),
-    output:
-        regions=expand("data/resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
-    params:
-        nchunks=config["freebayes_opts"]["nchunks"],
-    resources:
-        time="5-0",
-    shell:
-        "scripts/fasta_generate_regions.py --chunks --bed=data/resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
+# rule generate_freebayes_regions:
+#     input:
+#         ref=get_ref_to_generate_regions,
+#         idx=lambda w: get_ref_to_generate_regions(w, fai=True),
+#     output:
+#         regions=expand("data/resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
+#     params:
+#         nchunks=config["freebayes_opts"]["nchunks"],
+#     resources:
+#         time="5-0",
+#     shell:
+#         "scripts/fasta_generate_regions.py --chunks --bed=data/resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
 
 
 rule bcftools_index:

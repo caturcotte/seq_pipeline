@@ -1,62 +1,35 @@
+# options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
+output: 'tsvs'
+
 # location of the reference genome on longleaf
 ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
-
-# Illumina sequences are assumed to be paired
-sequencer: "novaseq" # hiseq, novaseq or nanopore
-aligner: "bwa" # bwa, bowtie2 or minimap2 (nanopore)
-caller: "bcftools" # bcftools or freebayes
-# should variants be called jointly for all of the samples in a group, or
-# should they be called individually for each sample?
-# freebayes will always do joint calling because it improves calling accuracy
-bcftools_opts:
-  call_as_groups: False
-
-# mask repeats in the reference genome?
 mask_repeats: True
 
-# trim adapters off of reads?
-# note: nanopore data is returned demultiplexed and with adapters trimmed
-trim_adapters: True
-trimming_opts:
-  adapters:
-# adapter sequences
-    read_1: 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
-    read_2: 'GATCGGAAGAGCACACGTCTGAACTCCAGTCACGGATGACTATCTCGTATGCCGTCTTCTGCTTG'
+data_locations:
+  proj: "/proj/sekellab/projects/pipeline_test/"
 
-# which chromosomes to call variants for
-chroms:
-  - 'chrX'
-  - 'chr2L'
-  - 'chr2R'
-  - 'chr3L'
-  - 'chr3R'
-  - 'chr4'
+illumina:
+  aligner: "bwa" # bwa or bowtie2
 
-# number of chunks to divide chroms into for freebayes (you can ignore this)
-freebayes_opts:
-  nchunks: 100
+caller: "bcftools" # bcftools or freebayes
 
 # how to filter variants
 filtering:
   variant_quality: True
   variant_quality_level: "strict" # options are strict, moderate, lenient or off
+
 # you can manually edit the quality cutoffs here
   variant_quality_cutoff_values:
     bcftools:
       strict: 200
       moderate: 100
       lenient: 50
-    freebayes:
-      strict: 1000 * progeny[n]
-      moderate: 500 * progeny[n]
-      lenient: 100 * progeny[n]
+    freebayes: # this is multiplied by the number of samples in the group
+      strict: 1000
+      moderate: 500
+      lenient: 100
 
-ndj_analysis: False
-ndj_analysis_opts:
-  parents:
-    ref_parent: 'w1118'
-    alt_parent: 'oregonr'
+bcftools_opts:
+  call_as_groups: False
 
-# options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
-output: 'tsvs'

@@ -1,40 +1,30 @@
 import pandas as pd
+import numpy as np
+import os
 import re
 
 
 reference = config["reference"]
 
-# chunks to use for parallelizing freebayes
-chunks = list(range(1, config["freebayes_opts"]["nchunks"] + 1))
-
-# chroms to call variants for
-chroms = config["chroms"]
-
-# if doing ndj analysis, the ref for snp calling is one of the parentals
-# the snps of that ref are determined by calling variants against dm6
-# then a consensus sequence is built from that
-if config["ndj_analysis"]:
-    ref_names = [
-        config["ref_name"],
-        config["ndj_analysis_opts"]["parents"]["ref_parent"],
-    ]
-else:
-    ref_names = [config["ref_name"]]
-
-# paired end or single end is determined by seq type, not including
-# Illumina single end as an option since we don't use it
-if config["sequencer"] == "nanopore":
-    seq_type = "SINGLE_END"
-else:
-    seq_type = "PAIRED_END"
-
 # convert the sample sheet info into a pandas dataframe
-sample_sheet = pd.read_excel("sample_sheet.xlsx", sheet_name=seq_type)
+sample_sheet = pd.read_csv("sample_sheet.csv")
 
 # list of all of the samples from the sheet
 samples = list(sample_sheet["sample"])
-# samples = list(sample_sheet.loc[sample_sheet["sample"] != 'w1118', 'sample'])
-# samples.pop(config["ndj_analysis_opts"]["parents"]["ref_parent"])
+
+# for nanopore data, aligner must be minimap2
+sample_sheet['aligner'] = np.where(
+    sample_sheet['platform'] == 'nanopore', 'minimap2', config['illumina']['aligner']
+)
+
+sample_sheet['trim'] = np.where(
+    (
+        pd.isnull(sample_sheet['read_1_adapter'].iloc[0]) or
+        pd.isnull(sample_sheet['read_2_adapter'].iloc[0])
+    ),
+    False,
+    True
+)
 
 # if not calling as groups, groups can be left blank in sample sheet
 # if not, throw an error if any are left blank
@@ -50,6 +40,8 @@ except:
             "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet"
         )
 
+def get_sample(w):
+    return sample_sheet.loc[sample_sheet["sample"] == w.sample]
 
 def get_adapter_seqs(w):
     r1 = sample_sheet.loc[sample_sheet["sample"] == w.sample, "read_1_adapter"]
@@ -59,11 +51,12 @@ def get_adapter_seqs(w):
 
 # get required names of aligned reads, determines which aligner is used
 def get_aligned_reads(w):
-    if config["aligner"].lower() == "bwa":
+    sample = get_sample(w)
+    if sample["aligner"].iloc[0].lower() == "bwa":
         return (f"data/alignments/{w.sample}_bwa.sam",)
-    elif config["aligner"].lower() == "bowtie2":
+    elif sample["aligner"].iloc[0].lower() == "bowtie2":
         return (f"data/alignments/{w.sample}_bt2.sam",)
-    elif config["aligner"].lower() == "minimap2":
+    elif sample["aligner"].iloc[0].lower() == "minimap2":
         return (f"data/alignments/{w.sample}_mm2.sam",)
     else:
         raise ValueError(
@@ -92,21 +85,19 @@ def get_caller(w):
 
 def get_call_type(w):
     if config['caller'] == 'freebayes' or config['bcftools_opts']['call_as_groups']:
-        return f'.tmp/group_call_{w.sample}_{w.caller}.txt'
+        return f".tmp/group_call_{w.sample}_{config['caller']}.txt"
     else:
         return f'.tmp/single_call_{w.sample}.txt'
 
 
 # locate reads based on the location(s) listed in the sample sheet
-def get_file_locations(w, end=None):
+def get_file_locations(w, read=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    if config["sequencer"] != "nanopore":
-        if end == "r1":
-            return sample["path_to_reads_1"]
-        elif end == "r2":
-            return sample["path_to_reads_2"]
-    else:
-        return sample["path_to_reads"]
+    base_dir = config['data_locations'][sample['location'].iloc[0]]
+    if sample['read_type'].iloc[0] == 'paired':
+        return os.path.join(base_dir, w.sample + f"_{read}.fq.gz")
+    elif sample['read_type'].iloc[0] == 'single':
+        return os.path.join(base_dir, w.sample + ".fq.gz")
 
 
 # get the final bcf file, name depends on several options
@@ -116,9 +107,6 @@ def get_final_bcf(w, s=None, csi=False):
     prefix = [f"data/calls/{s}_norm"]
     if config["filtering"]["variant_quality"] != "off":
         prefix.append("qflt")
-    if config["ndj_analysis"]:
-        if s in config["ndj_analysis_opts"]["parents"].values():
-            prefix.append("het")
     if not csi:
         return "_".join(prefix) + ".bcf"
     else:
@@ -130,8 +118,6 @@ def get_final_output(w):
     out = []
     if config["output"] == "tsvs":
         out.append("data/tsvs/merged.tsv")
-        if config["ndj_analysis"]:
-            out.append("data/tsvs/progeny_common.tsv")
         return out
     elif config["output"] == "consensus":
         return expand("seqs/{sample}.fa", sample=samples)
@@ -148,7 +134,7 @@ def get_final_output(w):
 def get_group_from_sample(w, groups=groups):
     for key, val in groups.items():
         if w.sample in val:
-            return f"data/calls/{key}/{w.caller}_unprocessed.bcf"
+            return f"data/calls/{key}_{w.caller}_unprocessed.bcf"
 
 
 # optical duplicate distance for removing optical duplicates from alignments
@@ -170,10 +156,17 @@ def get_progeny_tsvs(w, groups=groups):
 
 
 # get quality cutoff for filtering
-def get_qual_cutoff(w):
-    cutoff_level = config["filtering"]["variant_quality_level"]
+def get_qual_cutoff(w, groups=groups):
     caller = config["caller"]
-    return config["filtering"]["variant_quality_cutoff_values"][caller][cutoff_level]
+    cutoff_level = config["filtering"]["variant_quality_level"]
+    cutoff_val = config['filtering']['variant_quality_cutoff_values'][caller][cutoff_level]
+    if caller == 'freebayes':
+        for key, val in groups.items():
+            if w.sample in val:
+                group = key
+        n_samples = len(groups[group])
+        cutoff_val = cutoff_val * n_samples
+    return cutoff_val 
 
 
 # get the format for transforming vcfs into tsvs
@@ -201,25 +194,15 @@ def get_query_format(w):
 def get_reads(w, r=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
     if sample['trim'].any():
-        return "reads/{sample}_" + f"{r}_trimmed.fq.gz"
+        return "data/reads/{sample}_" + f"{r}_trimmed.fq.gz"
     else:
-        return "reads/{sample}_" + f"{r}.fq.gz"
+        return "data/reads/{sample}_" + f"{r}.fq.gz"
 
 
 # return reference file, name depends on whether repeats are being masked
 def get_ref(w, fai=False):
     basename = "data/resources/"
-    if not config["ndj_analysis"]:
-        basename += config["ref_name"]
-    else:
-        try:
-            s = w.group
-        except:
-            s = w.sample
-        if s == config["ndj_analysis_opts"]["parents"]["ref_parent"]:
-            basename += "dm6"
-        else:
-            basename += config["ndj_analysis_opts"]["parents"]["ref_parent"]
+    basename += config["ref_name"]
     if config["mask_repeats"]:
         basename += "_masked"
     basename += ".fa"
@@ -295,12 +278,5 @@ def get_regions_to_call(w):
 
 # get all of the tsv files to merge into one
 def get_tsvs_to_merge(w, samples=samples):
-    if config["ndj_analysis"]:
-        tsvs = [
-            i
-            for i in samples
-            if i != config["ndj_analysis_opts"]["parents"]["ref_parent"]
-        ]
-    else:
-        tsvs = [i for i in samples]
+    tsvs = [i for i in samples]
     return expand("data/tsvs/{sample}.tsv", sample=tsvs)
