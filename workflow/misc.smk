@@ -135,15 +135,3 @@ rule bcftools_index:
     #     "envs/bcftools.yaml"
     shell:
         "bcftools index {input}"
-
-
-rule vcf_stats:
-    input:
-        bcf="data/calls/{sample}.bcf",
-        ref=get_ref,
-    output:
-        "data/metrics/{sample}.bcf.stats",
-    # conda:
-    #     "envs/bcftools.yaml"
-    shell:
-        "bcftools stats -F {input.ref} -s - {input.bcf} > {output}"

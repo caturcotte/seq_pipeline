@@ -8,6 +8,7 @@ include: "workflow/functions.smk"
 include: "workflow/alignment.smk"
 include: "workflow/calling.smk"
 include: "workflow/misc.smk"
+include: "workflow/qc.smk"
 include: "workflow/vcf_filtering.smk"
 
 
@@ -29,4 +30,5 @@ wildcard_constraints:
 
 rule all:
     input:
+        "data/qc/multiqc.html",
         get_final_output,
