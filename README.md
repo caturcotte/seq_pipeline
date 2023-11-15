@@ -45,7 +45,8 @@ sshfs onyen@longleaf.unc.edu:/work/users/o/n/onyen/seq_pipeline seq_pipeline/
 ```
 - Then, locate `sample_sheet.csv` using your normal file browser, edit it in Excel and save.
 
-- For file locations, use a shorthand. You can then define this shorthand in config.yaml. For instance, if the location of a sample called A in sample_sheet.csv is listed as proj, and proj is defined in config.yaml as /proj/sekellab/projects/example_project/, snakemake will look for the file /proj/sekellab/projects/example_project/A.fq.gz (if single) or /proj/sekellab/example_project/A_1.fq.gz and A_2.fq.gz (if paired) to start the pipeline.
+- For file locations, use a shorthand. You can then define this shorthand in `config.yaml`.
+- For instance, if the location of a sample called A in `sample_sheet.csv` is listed as `example`, and `example` is defined in `file_locations` in `config.yaml` as `/work/users/o/n/onyen/example/`, snakemake will look for the file `/work/users/o/n/onyen/example/A.fq.gz` (if single) or `/work/users/o/n/onyen/example/A_1.fq.gz` and `/work/users/o/n/onyen/example/A_2.fq.gz` (if paired) to start the pipeline.
 
 5. Open `config.yaml` in a text editor and edit the options to suit your needs (instructions in file).
 
