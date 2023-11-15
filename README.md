@@ -13,7 +13,7 @@ ssh onyen@longleaf.unc.edu
 cd /work/users/o/n/onyen/
 git clone https://github.com/caturcotte/seq_pipeline.git
 ```
-
+### Editing the sample sheet and config files
 2. In a separate terminal window (or exit your SSH session in the current terminal window by typing `exit`), cd to a directory you can easily find in your file browser. Download the sample sheet to this directory, open it in Excel, and edit it with your sample information.
 - Adapters are optional. If left blank, nothing will be trimmed.
 - `location` is just a nickname for a file path specified later in `config.yaml`.
@@ -34,6 +34,8 @@ nano config.yaml # or vim config.yaml, or whatever command line text editor you 
 ```
 
 4. Open `slurm/config.yaml` in a text editor and replace `YOUR EMAIL HERE` with your ONYEN email. Also enter your email into `--mail-user` in `slurm_sub.sh`.
+
+### Installing mamba and activating the environment
    
 6. Run `miniforge_installer.sh` - this will also create a conda environment to run snakemake called `seq_env`
 ```
@@ -54,6 +56,7 @@ source ~/.bashrc
 ```
 mamba activate seq_env
 ```
+### Running the pipeline
 
 9. Perform a dry run of the pipeline with `snakemake -n`. It should spit out a list of jobs that it plans to run. If it fails, it's likely you did not input your samples correctly into the sample sheet.
 
