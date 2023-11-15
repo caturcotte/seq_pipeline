@@ -52,7 +52,7 @@ filtering:
       moderate: 500 * progeny[n]
       lenient: 100 * progeny[n]
 
-ndj_analysis: True
+ndj_analysis: False
 ndj_analysis_opts:
   parents:
     ref_parent: 'w1118'

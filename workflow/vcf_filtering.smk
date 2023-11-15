@@ -4,7 +4,7 @@ rule bcftools_norm:
         ref=get_ref,
         call_type=get_call_type,
     output:
-        bcf=temp("called/{sample}_norm.bcf"),
+        bcf=temp("data/calls/{sample}_norm.bcf"),
     resources:
         time="2:00:00",
     # conda:
@@ -15,10 +15,10 @@ rule bcftools_norm:
 
 rule filter_low_quality:
     input:
-        bcf="called/{sample}_norm.bcf",
-        csi="called/{sample}_norm.bcf.csi",
+        bcf="data/calls/{sample}_norm.bcf",
+        csi="data/calls/{sample}_norm.bcf.csi",
     output:
-        bcf="called/{sample}_norm_qflt.bcf",
+        bcf="data/calls/{sample}_norm_qflt.bcf",
     params:
         qual_cutoff=get_qual_cutoff,
     # conda:
@@ -30,10 +30,10 @@ rule filter_low_quality:
 
 rule filter_het:
     input:
-        bcf="called/{sample}_norm_qflt.bcf",
-        csi="called/{sample}_norm_qflt.bcf.csi",
+        bcf="data/calls/{sample}_norm_qflt.bcf",
+        csi="data/calls/{sample}_norm_qflt.bcf.csi",
     output:
-        bcf="called/{sample}_norm_qflt_het.bcf",
+        bcf="data/calls/{sample}_norm_qflt_het.bcf",
     # conda:
     #     "envs/bcftools.yaml"
     shell:
@@ -45,7 +45,7 @@ rule format_bcf:
         bcf=get_final_bcf,
         csi=lambda w: get_final_bcf(w, csi=True)
     output:
-        "tsvs/{sample}.tsv",
+        "data/tsvs/{sample}.tsv",
     params:
         format=get_query_format,
     # conda:
@@ -61,7 +61,7 @@ rule make_consensus_genome:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        "seqs/{sample}.fa",
+        "data/seqs/{sample}.fa",
     # conda:
     #     "envs/bcftools.yaml"
     # params:
@@ -73,8 +73,8 @@ rule make_consensus_genome:
 rule merge_tsvs:
     input:
         get_tsvs_to_merge,
-        expand("tsvs/{sample}.tsv", sample=samples),
+        expand("data/tsvs/{sample}.tsv", sample=samples),
     output:
-        "tsvs/merged.tsv",
+        "data/tsvs/merged.tsv",
     shell:
         "cat {input} > {output}"

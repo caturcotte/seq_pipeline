@@ -2,16 +2,16 @@ rule symlink_ref:
     input:
         config["reference"],
     output:
-        f"resources/{config['ref_name']}.fa",
+        f"data/resources/{config['ref_name']}.fa",
     shell:
         "ln -s {input} {output}"
 
 
 rule mask_repeats:
     input:
-        "resources/{ref}.fa",
+        "data/resources/{ref}.fa",
     output:
-        "resources/{ref}.fa.masked",
+        "data/resources/{ref}.fa.masked",
     threads: 16
     shell:
         "RepeatMasker -species 7227 -pa {threads} -dir resources/ -s {input}"
@@ -19,9 +19,9 @@ rule mask_repeats:
 
 rule mv_masked_ref:
     input:
-        "resources/{ref}.fa.masked",
+        "data/resources/{ref}.fa.masked",
     output:
-        "resources/{ref}_masked.fa",
+        "data/resources/{ref}_masked.fa",
     shell:
         "mv {input} {output}"
 
@@ -41,7 +41,7 @@ rule symlink_fqs_single:
     input:
         get_file_locations,
     output:
-        "reads/{sample}.fq.gz",
+        "data/reads/{sample}.fq.gz",
     shell:
         "ln -s {input} {output}"
 
@@ -51,19 +51,19 @@ rule symlink_fqs_paired:
         r1=lambda w: get_file_locations(w, end="r1"),
         r2=lambda w: get_file_locations(w, end="r2"),
     output:
-        r1="reads/{sample}_1.fq.gz",
-        r2="reads/{sample}_2.fq.gz",
+        r1="data/reads/{sample}_1.fq.gz",
+        r2="data/reads/{sample}_2.fq.gz",
     shell:
         "ln -s {input.r1} {output.r1} && ln -s {input.r2} {output.r2}"
 
 
 rule trim_adapters:
     input:
-        ["reads/{sample}_1.fq.gz", "reads/{sample}_2.fq.gz"],
+        ["data/reads/{sample}_1.fq.gz", "reads/{sample}_2.fq.gz"],
     output:
-        fastq1="reads/{sample}_1_trimmed.fq.gz",
-        fastq2="reads/{sample}_2_trimmed.fq.gz",
-        qc="reads/{sample}.qc.txt",
+        fastq1="data/reads/{sample}_1_trimmed.fq.gz",
+        fastq2="data/reads/{sample}_2_trimmed.fq.gz",
+        qc="data/reads/{sample}.qc.txt",
     threads: 2
     params:
         adapters=lambda w: get_adapter_seqs(w),
@@ -117,13 +117,13 @@ rule generate_freebayes_regions:
         ref=get_ref_to_generate_regions,
         idx=lambda w: get_ref_to_generate_regions(w, fai=True),
     output:
-        regions=expand("resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
+        regions=expand("data/resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
     params:
         nchunks=config["freebayes_opts"]["nchunks"],
     resources:
         time="5-0",
     shell:
-        "scripts/fasta_generate_regions.py --chunks --bed=resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
+        "scripts/fasta_generate_regions.py --chunks --bed=data/resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
 
 
 rule bcftools_index:
@@ -139,10 +139,10 @@ rule bcftools_index:
 
 rule vcf_stats:
     input:
-        bcf="called/{sample}.bcf",
+        bcf="data/calls/{sample}.bcf",
         ref=get_ref,
     output:
-        "metrics/{sample}.bcf.stats",
+        "data/metrics/{sample}.bcf.stats",
     # conda:
     #     "envs/bcftools.yaml"
     shell:

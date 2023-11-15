@@ -1,11 +1,11 @@
 rule bcftools_mpileup_single:
     input:
-        alns='mapped/{sample}_sort_dedup.bam',
-        idxs='mapped/{sample}_sort_dedup.bam.bai',
+        alns='data/alignments/{sample}_sort_dedup.bam',
+        idxs='data/alignments/{sample}_sort_dedup.bam.bai',
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf=temp("called/{sample}_bcftools_pileup.bcf"),
+        bcf=temp("data/calls/{sample}_bcftools_pileup.bcf"),
         call_type=temp('.tmp/single_call_{sample}.txt')
     params:
         regions=lambda w: get_regions_to_call(w),
@@ -24,7 +24,7 @@ rule bcftools_mpileup_group:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        "called/{group}_bcftools_pileup.bcf",
+        "data/calls/{group}_bcftools_pileup.bcf",
     params:
         regions=lambda w: get_regions_to_call(w),
         extra="--max-depth 200 --min-BQ 15"
@@ -37,9 +37,9 @@ rule bcftools_mpileup_group:
 
 rule bcftools_call:
     input:
-        "called/{sample_or_group}_bcftools_pileup.bcf",
+        "data/calls/{sample_or_group}_bcftools_pileup.bcf",
     output:
-        bcf="called/{sample_or_group}_bcftools_unprocessed.bcf",
+        bcf="data/calls/{sample_or_group}_bcftools_unprocessed.bcf",
     params:
         # regions=lambda w: get_regions_to_call(w),
     threads: 4
@@ -57,7 +57,7 @@ rule freebayes:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        temp("called/{chrom}/{group}_{i}.bcf"),
+        temp("data/calls/{chrom}/{group}_{i}.bcf"),
     log:
         "logs/freebayes/{chrom}_{group}_{i}.log",
     threads: 1
@@ -71,10 +71,10 @@ rule freebayes:
 
 rule concat_freebayes:
     input:
-        calls=expand("called/{chrom}/{{group}}_{i}.bcf", i=chunks, chrom=chroms),
-        idxs=expand("called/{chrom}/{{group}}_{i}.bcf.csi", i=chunks, chrom=chroms),
+        calls=expand("data/calls/{chrom}/{{group}}_{i}.bcf", i=chunks, chrom=chroms),
+        idxs=expand("data/calls/{chrom}/{{group}}_{i}.bcf.csi", i=chunks, chrom=chroms),
     output:
-        temp("called/{group}/freebayes_unprocessed.bcf"),
+        temp("data/calls/{group}/freebayes_unprocessed.bcf"),
     log:
         "logs/concat_vcfs/{group}.log",
     conda:
@@ -87,7 +87,7 @@ rule separate_into_samples:
     input:
         get_group_from_sample,
     output:
-        bcfs="called/{sample}_{caller}_unprocessed.bcf",
+        bcfs="data/calls/{sample}_{caller}_unprocessed.bcf",
         call_type=temp('.tmp/group_call_{sample}_{caller}.txt')
     resources:
         time="2:00:00",

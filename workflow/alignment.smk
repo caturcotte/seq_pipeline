@@ -5,7 +5,7 @@ rule bwa_mem:
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
-        sam="mapped/{sample}_bwa.sam",
+        sam="data/alignments/{sample}_bwa.sam",
     resources:
         time="5-0",
     threads: 16
@@ -21,7 +21,7 @@ rule bowtie2:
         r2=lambda w: get_reads(w, r=2),
         ref=get_ref_bowtie2,
     output:
-        sam="mapped/{sample}_bt2.sam",
+        sam="data/alignments/{sample}_bt2.sam",
     params:
         extra=lambda w: f"--rg-id={w.sample} --rg SM:{w.sample}",
         ref_basename=get_ref,
@@ -39,7 +39,7 @@ rule minimap2:
         reads="reads/{sample}.fq.gz",
         ref=get_ref_minimap2,
     output:
-        "mapped/{sample}_mm2.sam",
+        "data/alignments/{sample}_mm2.sam",
     resources:
         time="5-0",
     threads: 16
@@ -53,7 +53,7 @@ rule fix_mate_pairs:
     input:
         get_aligned_reads,
     output:
-        temp("mapped/{sample}.bam"),
+        temp("data/alignments/{sample}.bam"),
     resources:
         time="2:00:00",
     # conda:
@@ -64,9 +64,9 @@ rule fix_mate_pairs:
 
 rule samtools_sort:
     input:
-        "mapped/{sample}.bam",
+        "data/alignments/{sample}.bam",
     output:
-        temp("mapped/{sample}_sort.bam"),
+        temp("data/alignments/{sample}_sort.bam"),
     threads: 4
     resources:
         time="2:00:00",
@@ -78,10 +78,10 @@ rule samtools_sort:
 
 rule mark_duplicates:
     input:
-        bam="mapped/{sample}_sort.bam",
+        bam="data/alignments/{sample}_sort.bam",
         ref=get_ref,
     output:
-        bam="mapped/{sample}_sort_dedup.bam",
+        bam="data/alignments/{sample}_sort_dedup.bam",
         # metrics="metrics/{sample}_dedup_metrics.txt",
     threads: 4
     resources:
@@ -96,9 +96,9 @@ rule mark_duplicates:
 
 rule samtools_index:
     input:
-        "mapped/{sample}_sort_dedup.bam",
+        "data/alignments/{sample}_sort_dedup.bam",
     output:
-        "mapped/{sample}_sort_dedup.bam.bai",
+        "data/alignments/{sample}_sort_dedup.bam.bai",
     resources:
         time="2:00:00",
     # conda:
