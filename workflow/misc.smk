@@ -14,7 +14,7 @@ rule mask_repeats:
         "data/resources/{ref}.fa.masked",
     threads: 16
     shell:
-        "RepeatMasker -species 7227 -pa {threads} -dir resources/ -s {input}"
+        "RepeatMasker -species 7227 -pa {threads} -dir data/resources/ -s {input}"
 
 
 rule mv_masked_ref:
@@ -31,45 +31,55 @@ rule faidx_ref:
         "{prefix}",
     output:
         "{prefix}.fai",
-    # conda:
-    #     "envs/samtools.yaml"
     shell:
         "samtools faidx {input}"
 
 
 rule symlink_fqs_single:
     input:
-        get_file_locations,
+        get_reads,
     output:
-        "data/reads/{sample}.fq.gz",
+        "data/reads/{sample}_{iden}.fq.gz",
     shell:
         "ln -s {input} {output}"
 
 
 rule symlink_fqs_paired:
     input:
-        r1=lambda w: get_file_locations(w, read="1"),
-        r2=lambda w: get_file_locations(w, read="2"),
+        get_reads,
     output:
-        r1="data/reads/{sample}_1.fq.gz",
-        r2="data/reads/{sample}_2.fq.gz",
+        ["data/reads/{sample}_{iden}_1.fq.gz", "data/reads/{sample}_{iden}_2.fq.gz"],
     shell:
-        "ln -s {input.r1} {output.r1} && ln -s {input.r2} {output.r2}"
+        "ln -s {input[0]} {output[0]} && ln -s {input[1]} {output[1]}"
 
 
-rule trim_adapters:
+rule trim_adapters_paired:
     input:
-        ["data/reads/{sample}_1.fq.gz", "data/reads/{sample}_2.fq.gz"],
+        ["data/reads/{sample}_{prefix}_1.fq.gz", "data/reads/{sample}_{prefix}_2.fq.gz"],
     output:
-        fastq1="data/reads/{sample}_1_trimmed.fq.gz",
-        fastq2="data/reads/{sample}_2_trimmed.fq.gz",
-        qc="data/reads/{sample}.qc.txt",
+        fastq1="data/reads/{sample}_{prefix}_1_trimmed.fq.gz",
+        fastq2="data/reads/{sample}_{prefix}_2_trimmed.fq.gz",
+        qc="data/qc/cutadapt/{sample}_{prefix}.txt",
     threads: 2
     params:
         adapters=lambda w: get_adapter_seqs(w),
         extra="--minimum-length 1 -q 20",
     wrapper:
         "v2.6.0/bio/cutadapt/pe"
+
+
+rule trim_adapters_single:
+    input:
+        "data/reads/{sample}_{prefix}.fq.gz",
+    output:
+        fastq="data/reads/{sample}_{prefix}_trimmed.fq.gz",
+        qc="data/qc/cutadapt/{sample}_{prefix}.txt",
+    threads: 2
+    params:
+        adapters=lambda w: get_adapter_seqs(w),
+        extra="--minimum-length 1 -q 20",
+    wrapper:
+        "v2.6.0/bio/cutadapt/se"
 
 
 rule bwa_idx:

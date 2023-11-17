@@ -1,34 +1,37 @@
 # general QC checks for reads
 rule fastqc_single:
-  input:
-    "data/reads/{sample}.fq.gz"
-  output:
-    html="data/qc/fastqc/{sample}.html",
-    zip="data/qc/fastqc/{sample}_fastqc.zip"
-  wrapper:
-    "v2.11.1/bio/fastqc"
+    input:
+        "data/reads/{sample}.fq.gz",
+    output:
+        html="data/qc/fastqc/{sample}.html",
+        zip="data/qc/fastqc/{sample}_fastqc.zip",
+    wrapper:
+        "v2.11.1/bio/fastqc"
+
 
 rule fastqc_paired:
-  input:
-    "data/reads/{sample}_{read}.fq.gz"
-  output:
-    html="data/qc/fastqc/{sample}_{read}.html",
-    zip="data/qc/fastqc/{sample}_{read}_fastqc.zip"
-  wrapper:
-    "v2.11.1/bio/fastqc"
+    input:
+        "data/reads/{sample}_{read}.fq.gz",
+    output:
+        html="data/qc/fastqc/{sample}_{read}.html",
+        zip="data/qc/fastqc/{sample}_{read}_fastqc.zip",
+    wrapper:
+        "v2.11.1/bio/fastqc"
+
 
 # read depth calculations
 rule mosdepth:
-  input:
-    bam="data/alignments/{sample}_sort_dedup.bam",
-    bai="data/alignments/{sample}_sort_dedup.bam.bai",
-  output:
-    "data/qc/mosdepth/{sample}.mosdepth.global.dist.txt",
-    "data/qc/mosdepth/{sample}.per-base.bed.gz",
-    summary="data/qc/mosdepth/{sample}.mosdepth.summary.txt",
-  threads: 4
-  wrapper:
-    "v2.11.1/bio/mosdepth"
+    input:
+        bam="data/alignments/{sample}_dedup.bam",
+        bai="data/alignments/{sample}_dedup.bam.bai",
+    output:
+        "data/qc/mosdepth/{sample}.mosdepth.global.dist.txt",
+        "data/qc/mosdepth/{sample}.per-base.bed.gz",
+        summary="data/qc/mosdepth/{sample}.mosdepth.summary.txt",
+    threads: 4
+    wrapper:
+        "v2.11.1/bio/mosdepth"
+
 
 # rule fastq_screen_get_genomes:
 #   output:
@@ -83,6 +86,7 @@ rule mosdepth:
 #   wrapper:
 #     "v2.11.1/bio/verifybamid/verifybamid2"
 
+
 rule vcf_stats:
     input:
         "data/calls/{sample}_{caller}_unprocessed.bcf",
@@ -94,18 +98,25 @@ rule vcf_stats:
     wrapper:
         "v2.13.0/bio/bcftools/stats"
 
+
 rule multiqc:
-  input:
-    # expand("data/qc/verify_bam_id/{sample}.selfSM", sample=samples),
-    expand("data/qc/bcftools/{sample}_{caller}.stats.txt", sample=samples, caller=config['caller']),
-    # expand("data/qc/varianteval/{sample}.varianteval.grp", sample=samples),
-    # expand("data/qc/fastq_screen/{sample}.fastq_screen.txt", sample=samples),
-    expand("data/qc/fastqc/{sample}_{read}_fastqc.zip", sample=samples, read=[1,2]),
-    expand("data/qc/mosdepth/{sample}.mosdepth.global.dist.txt", sample=samples),
-  output:
-    "data/qc/multiqc.html",
-    directory("data/qc/multiqc_data"),
-  params:
-    extra="--data-dir",
-  wrapper:
-    "v2.11.1/bio/multiqc"
+    input:
+        # expand("data/qc/verify_bam_id/{sample}.selfSM", sample=samples),
+        expand(
+            "data/qc/bcftools/{sample}_{caller}.stats.txt",
+            sample=samples,
+            caller=config["caller"],
+        ),
+        glob_wildcards("data/qc/cutadapt/{sample}_{prefix}.txt"),
+        expand("data/qc/sambamba/{sample}.log", sample=samples),
+        # expand("data/qc/varianteval/{sample}.varianteval.grp", sample=samples),
+        # expand("data/qc/fastq_screen/{sample}.fastq_screen.txt", sample=samples),
+        expand("data/qc/fastqc/{sample}_{read}_fastqc.zip", sample=samples, read=[1, 2]),
+        expand("data/qc/mosdepth/{sample}.mosdepth.global.dist.txt", sample=samples),
+    output:
+        "data/qc/multiqc.html",
+        directory("data/qc/multiqc_data"),
+    params:
+        extra="--data-dir",
+    wrapper:
+        "v2.11.1/bio/multiqc"
