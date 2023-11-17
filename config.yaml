@@ -6,8 +6,12 @@ ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 mask_repeats: True
 
+# file locations to use in the sample sheet.
+# If location is set to proj for paired sample A, snakemake will look for the files:
+# /proj/sekellab/projects/pipeline_test/A_1.fq.gz
+# /proj/sekellab/projects/pipeline_test/A_2.fq.gz
 data_locations:
-  proj: "/proj/sekellab/projects/pipeline_test/"
+  proj: "/work/users/c/a/cannecar/pipeline_test/"
 
 illumina:
   aligner: "bwa" # bwa or bowtie2
@@ -16,19 +20,10 @@ caller: "bcftools" # bcftools or freebayes
 
 # how to filter variants
 filtering:
-  variant_quality: True
-  variant_quality_level: "strict" # options are strict, moderate, lenient or off
-
-# you can manually edit the quality cutoffs here
-  variant_quality_cutoff_values:
-    bcftools:
-      strict: 200
-      moderate: 100
-      lenient: 50
-    freebayes: # this is multiplied by the number of samples in the group
-      strict: 1000
-      moderate: 500
-      lenient: 100
+    - "QUAL>10" # basic quality filtering
+    - "QUAL/AO > 10" # scale quality by depth
+    - "DP > 20 & DP < 200" # depth cutoffs
+    - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
 
 bcftools_opts:
   call_as_groups: False

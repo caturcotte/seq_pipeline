@@ -23,7 +23,8 @@ localrules:
 wildcard_constraints:
     group="|".join([i for i in groups.keys()]),
     sample="|".join([i for i in samples]),
-    ref=config['ref_name']
+    ref=config["ref_name"],
+    iden="|".join(prefixes)
     # chrom="|".join([i for i in chroms]),
     # ref="|".join([i for i in ref_names]),
 

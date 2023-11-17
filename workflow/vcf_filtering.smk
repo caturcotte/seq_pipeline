@@ -36,7 +36,7 @@ rule filter_het:
 rule format_bcf:
     input:
         bcf=get_final_bcf,
-        csi=lambda w: get_final_bcf(w, csi=True)
+        csi=lambda w: get_final_bcf(w, csi=True),
     output:
         "data/tsvs/{sample}.tsv",
     params:

@@ -13,18 +13,44 @@ sample_sheet = pd.read_csv("sample_sheet.csv")
 samples = list(sample_sheet["sample"])
 
 # for nanopore data, aligner must be minimap2
-sample_sheet['aligner'] = np.where(
-    sample_sheet['platform'] == 'nanopore', 'minimap2', config['illumina']['aligner']
+sample_sheet["aligner"] = np.where(
+    sample_sheet["platform"] == "nanopore", "minimap2", config["illumina"]["aligner"]
 )
 
-sample_sheet['trim'] = np.where(
+sample_sheet["trim"] = np.where(
     (
-        pd.isnull(sample_sheet['read_1_adapter'].iloc[0]) or
-        pd.isnull(sample_sheet['read_2_adapter'].iloc[0])
+        pd.isnull(sample_sheet["read_1_adapter"].iloc[0])
+        or pd.isnull(sample_sheet["read_2_adapter"].iloc[0])
     ),
     False,
-    True
+    True,
 )
+
+prefixes = []
+for sample in list(sample_sheet['sample']):
+    sample_row = sample_sheet.loc[sample_sheet['sample'] == sample]
+    match sample_row['source'].iloc[0].lower():
+        case "novogene":
+            path = os.path.join(
+                config["data_locations"][sample_row["location"].iloc[0]],
+                f"usftp21.novogene.com/01.RawData/",
+                sample
+            )
+        case "nanopore":
+            path = os.path.join(
+                config["data"][sample_row["location"].iloc[0]],
+                f"fastq_pass/{sample_row['barcode'].iloc[0]}/",
+                sample
+            )
+    files = os.listdir(path)
+    match sample_row['read_type'].iloc[0].lower():
+        case 'paired':
+            regex = r"(?<=" + sample + r"_).*(?=_[12].fq.gz)"
+        case 'single':
+            regex = r"(?<=" + sample + r"_).*(?=.fq.gz)"
+    p = re.compile(regex)
+    [prefixes.append(p.findall(i)) for i in files]
+prefixes = [val for lst in prefixes for val in lst]
 
 # if not calling as groups, groups can be left blank in sample sheet
 # if not, throw an error if any are left blank
@@ -40,42 +66,127 @@ except:
             "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet"
         )
 
+def get_data_path(w):
+    sample = get_sample(w)
+    match sample['source'].iloc[0].lower():
+        case "novogene":
+            return os.path.join(
+                config["data_locations"][sample["location"].iloc[0]],
+                f"usftp21.novogene.com/01.RawData/{w.sample}",
+            )
+        case "nanopore":
+            return os.path.join(
+                config["data_locations"][sample["location"].iloc[0]],
+                f"fastq_pass/{sample['barcode'].iloc[0]}/",
+            )
+        case _:
+            raise ValueError("One or more samples could not be found in the provided data location, but no valid alternate source was listed. The source in sample sheet must be either novogene or nanopore.")
+        
+
+def get_ids_for_sample(w):
+    path = get_data_path(w)
+    files = os.listdir(path)
+    if is_paired(w):
+        regex = r"(?<=" + w.sample + r"_).*(?=_[12].fq.gz)"
+    else:
+        regex = r"(?<=" + w.sample + r"_).*(?=.fq.gz)"
+    p = re.compile(regex)
+    matches = [p.findall(i) for i in files]
+    return [val for lst in matches for val in lst]
+
+def get_alns_to_merge(w):
+    return [os.path.join("data/alignments/", f"{w.sample}_{i}_sort.bam") for i in get_ids_for_sample(w)]
+
+
+def get_reads(w):
+    path = get_data_path(w)
+    if is_paired(w):
+        r1 = os.path.join(path, "{sample}_{iden}_1.fq.gz")
+        r2 = os.path.join(path, "{sample}_{iden}_2.fq.gz")
+        return [r1, r2]
+    else:
+        return os.path.join(path, "{sample}_{iden}.fq.gz")
+
+
+def get_reads_to_trim(w):
+    sample = get_sample(w)
+    if is_paired(w):
+        return [
+            "data/reads/{sample}_{iden}_1.fq.gz",
+            "data/reads/{sample}_{iden}_2.fq.gz",
+        ]
+    else:
+        return "data/reads/{sample}_{iden}.fq.gz"
+
+
 def get_sample(w):
     return sample_sheet.loc[sample_sheet["sample"] == w.sample]
 
+
 def get_adapter_seqs(w):
-    r1 = sample_sheet.loc[sample_sheet["sample"] == w.sample, "read_1_adapter"]
-    r2 = sample_sheet.loc[sample_sheet["sample"] == w.sample, "read_2_adapter"]
-    return f"-a {r1.iloc[0]} -A {r2.iloc[0]}"
+    sample = get_sample(w)
+    r1 = sample["read_1_adapter"]
+    r2 = sample["read_2_adapter"]
+    if r1.any():
+        if r2.any():
+            return f"-a {r1.iloc[0]} -A {r2.iloc[0]}"
+        else:
+            return f"-a {r1.iloc[0]}"
+    elif r2.any():
+        return f"-A {r2.iloc[0]}"
+
+
+def is_paired(w):
+    sample = get_sample(w)
+    match sample["read_type"].iloc[0]:
+        case "paired":
+            return True
+        case "single":
+            return False
+        case _:
+            raise ValueError(f"Read type not specified for sample {w.sample}.")
+
+
+def get_fastqc_files(w):
+    if is_paired(w):
+        return (
+            expand(
+                "data/qc/fastqc/{sample}_{read}_fastqc.zip", sample=samples, read=[1, 2]
+            ),
+        )
+    else:
+        return (expand("data/qc/fastqc/{sample}_fastqc.zip", sample=samples),)
+    get_trim_files,
 
 
 # get required names of aligned reads, determines which aligner is used
 def get_aligned_reads(w):
     sample = get_sample(w)
     if sample["aligner"].iloc[0].lower() == "bwa":
-        return (f"data/alignments/{w.sample}_bwa.sam",)
+        return (f"data/alignments/{w.sample}_{w.iden}_bwa.bam",)
     elif sample["aligner"].iloc[0].lower() == "bowtie2":
-        return (f"data/alignments/{w.sample}_bt2.sam",)
+        return (f"data/alignments/{w.sample}_{w.iden}_bt2.bam",)
     elif sample["aligner"].iloc[0].lower() == "minimap2":
-        return (f"data/alignments/{w.sample}_mm2.sam",)
+        return (f"data/alignments/{w.sample}_{w.iden}_mm2.bam",)
     else:
         raise ValueError(
             "Invalid aligner in config.yaml: options are bwa, bowtie2 or minimap2"
         )
 
+
 def get_alns_for_pileup(w, bai=False):
-    if config['caller'] == 'freebayes' or config['bcftools_opts']['call_as_groups']:
-        return [f"data/alignments/{i}_sort_dedup.bam" for i in groups[w.group]]
+    if config["caller"] == "freebayes" or config["bcftools_opts"]["call_as_groups"]:
+        return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
     else:
-        return f'data/alignments/{w.sample_or_group}_sort_dedup.bam'
+        return f"data/alignments/{w.sample_or_group}_dedup.bam"
 
 
 # return either bams for all of the samples in the group or individual sample bams
 def get_alns_in_group(w, groups=groups, bai=False):
     if config["bcftools_opts"]["call_as_groups"]:
-        return [f"data/alignments/{i}_sort_dedup.bam" for i in groups[w.group]]
+        return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
     else:
-        return f"data/alignments/{w.sample}_sort_dedup.bam"
+        return f"data/alignments/{w.sample}_dedup.bam"
 
 
 # get name of variant caller from config file
@@ -84,19 +195,19 @@ def get_caller(w):
 
 
 def get_call_type(w):
-    if config['caller'] == 'freebayes' or config['bcftools_opts']['call_as_groups']:
+    if config["caller"] == "freebayes" or config["bcftools_opts"]["call_as_groups"]:
         return f".tmp/group_call_{w.sample}_{config['caller']}.txt"
     else:
-        return f'.tmp/single_call_{w.sample}.txt'
+        return f".tmp/single_call_{w.sample}.txt"
 
 
 # locate reads based on the location(s) listed in the sample sheet
 def get_file_locations(w, read=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    base_dir = config['data_locations'][sample['location'].iloc[0]]
-    if sample['read_type'].iloc[0] == 'paired':
+    base_dir = config["data_locations"][sample["location"].iloc[0]]
+    if sample["read_type"].iloc[0] == "paired":
         return os.path.join(base_dir, w.sample + f"_{read}.fq.gz")
-    elif sample['read_type'].iloc[0] == 'single':
+    elif sample["read_type"].iloc[0] == "single":
         return os.path.join(base_dir, w.sample + ".fq.gz")
 
 
@@ -104,13 +215,17 @@ def get_file_locations(w, read=None):
 def get_final_bcf(w, s=None, csi=False):
     if s == None:
         s = w.sample
-    prefix = [f"data/calls/{s}_norm"]
-    if config["filtering"]["variant_quality"] != "off":
-        prefix.append("qflt")
     if not csi:
-        return "_".join(prefix) + ".bcf"
+        return f"data/calls/{s}_norm_qflt.bcf"
     else:
-        return "_".join(prefix) + ".bcf" + ".csi"
+        return f"data/calls/{s}_norm_qflt.bcf.csi"
+    # prefix = [f"data/calls/{s}_norm"]
+    # if config["filtering"]["variant_quality"] != "off":
+    #     prefix.append("qflt")
+    # if not csi:
+    #     return "_".join(prefix) + ".bcf"
+    # else:
+    #     return "_".join(prefix) + ".bcf" + ".csi"
 
 
 # get final output for rule all
@@ -127,7 +242,7 @@ def get_final_output(w):
             vcfs.append(get_final_bcf(w, s=i, csi=True))
         return vcfs
     elif config["output"] == "alignments":
-        return expand("data/alignments/{sample}_sort_dedup.bam.bai", sample=samples)
+        return expand("data/alignments/{sample}_dedup.bam.bai", sample=samples)
 
 
 # return the group that a sample belongs to
@@ -157,16 +272,19 @@ def get_progeny_tsvs(w, groups=groups):
 
 # get quality cutoff for filtering
 def get_qual_cutoff(w, groups=groups):
-    caller = config["caller"]
-    cutoff_level = config["filtering"]["variant_quality_level"]
-    cutoff_val = config['filtering']['variant_quality_cutoff_values'][caller][cutoff_level]
-    if caller == 'freebayes':
-        for key, val in groups.items():
-            if w.sample in val:
-                group = key
-        n_samples = len(groups[group])
-        cutoff_val = cutoff_val * n_samples
-    return cutoff_val 
+    return "-i'" + " & ".join(config['filtering']) + "'"
+    # caller = config["caller"]
+    # cutoff_level = config["filtering"]["variant_quality_level"]
+    # cutoff_val = config["filtering"]["variant_quality_cutoff_values"][caller][
+    #     cutoff_level
+    # ]
+    # if caller == "freebayes":
+    #     for key, val in groups.items():
+    #         if w.sample in val:
+    #             group = key
+    #     n_samples = len(groups[group])
+    #     cutoff_val = cutoff_val * n_samples
+    # return cutoff_val
 
 
 # get the format for transforming vcfs into tsvs
@@ -187,16 +305,22 @@ def get_query_format(w):
     elif config["caller"] == "bcftools":
         add_cols = ["%DP", "%PL", "%DP4{0}", "%DP4{1}", "%DP4{2}", "%DP4{3}"]
     [cols.append(i) for i in add_cols]
-    query = '\t'.join(cols)
-    return '[' + query + ']\n' 
+    query = "\t".join(cols)
+    return "[" + query + "]\n"
 
 
-def get_reads(w, r=None):
+def get_reads_to_map(w, r=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    if sample['trim'].any():
-        return "data/reads/{sample}_" + f"{r}_trimmed.fq.gz"
+    f = "data/reads/{sample}_{iden}"
+    if sample["read_type"].iloc[0] == "paired":
+        basename = [f"{f}_1", f"{f}_2"]
     else:
-        return "data/reads/{sample}_" + f"{r}.fq.gz"
+        basename = [f]
+    if sample["trim"].any():
+        final = [i + "_trimmed.fq.gz" for i in basename]
+    else:
+        final = [i + ".fq.gz" for i in basename]
+    return final
 
 
 # return reference file, name depends on whether repeats are being masked
@@ -262,7 +386,7 @@ def get_region_from_sample(w):
     basename = get_ref(w)
     region_basename = re.sub(r"(^data/resources/)", r"\1regions/", basename)
     if config["mask_repeats"]:
-        region_basename = re.sub(r"(.masked)*(.fa)", r"", region_basename)
+        region_basename = re.sub(r"(\.masked)*(\.fa)", r"", region_basename)
     return region_basename + f".{w.chrom}.region.{w.i}.bed"
 
 
@@ -270,11 +394,13 @@ def get_region_from_sample(w):
 def get_regions_to_call(w):
     return ",".join(config["chroms"])
 
+
 # def get_alns_for_mpileup(w):
 #     if not config['bcftools']['call_as_group']:
 #         return "data/alignments/{sample}_sort_dedup.bam"
 #     else:
-#         return get_alns_in_group(w) 
+#         return get_alns_in_group(w)
+
 
 # get all of the tsv files to merge into one
 def get_tsvs_to_merge(w, samples=samples):
