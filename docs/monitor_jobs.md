@@ -1,3 +1,9 @@
+---
+layout: page
+title: "Monitor the status of your jobs"
+permalink: /monitor-jobs
+---
+
 # Monitor the status of all of your jobs
 
 You can do the following to monitor the status of your jobs:

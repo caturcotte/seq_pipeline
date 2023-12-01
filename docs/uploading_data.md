@@ -1,3 +1,9 @@
+---
+layout: page
+title: "Uploading data to Longleaf"
+permalink: /uploading-data
+---
+
 ## Uploading Novogene data
 
 When your data is ready, you should get an email that looks like this. Click the link highlighted in yellow:

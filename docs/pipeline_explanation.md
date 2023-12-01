@@ -1,3 +1,9 @@
+---
+layout: page
+title: "Understanding the pipeline"
+permalink: /understanding-the-pipeline
+---
+
 ## How the pipeline works
 
 #### Alignment and [BAM](https://en.wikipedia.org/wiki/Binary_Alignment_Map) processing

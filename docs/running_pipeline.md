@@ -1,3 +1,8 @@
+---
+layout: page
+title: "Running the pipeline"
+permalink: /running-the-pipeline
+---
 
 > [!important] 
 > When a line in a code block starts with a `$`, it means that that line should be entered into the terminal prompt. **Do not** include the `$` when typing/copying the command into the prompt.
