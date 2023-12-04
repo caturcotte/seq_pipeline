@@ -343,7 +343,7 @@ The output should say `Submitted batch job JOB-NUMBER.`
 
 The pipeline is now running. While it's running, you can monitor the status of your jobs.
 
-# Monitor the status of all of your jobs
+## Monitor the status of all of your jobs
 
 You can do the following to monitor the status of your jobs:
 ```
@@ -360,7 +360,7 @@ $ squeue -u <onyen> -i 60
 
 This will update with the status of your jobs every minute (press Ctrl+C to cancel).
 
-## Monitor the output log
+### Monitor the output log
 
 To continually follow the output of your jobs, use:
 ```
@@ -385,7 +385,7 @@ Error executing rule sort_bams on cluster (jobid: 15, external: Submitted batch 
 ```
 
 Then there was a problem with a job. You can view the output of one of the jobs that failed to see more specific details (see below).
-## View the output of specific jobs
+### View the output of specific jobs
 
 >[!tip]
 >If one of the jobs gave you an error. you can use the error message from the main output log to quickly find the corresponding log file.
@@ -477,7 +477,7 @@ See [here](https://gatk.broadinstitute.org/hc/en-us/articles/360035531572-Evalua
 
 ## How the pipeline works
 
-#### Alignment and [BAM](https://en.wikipedia.org/wiki/Binary_Alignment_Map) processing
+### Alignment and [BAM](https://en.wikipedia.org/wiki/Binary_Alignment_Map) processing
 
 First, all of the reads or read pairs for a given sample will be individually aligned to whatever reference genome is selected in `config.yaml`. The alignments will then be sorted and merged into a single BAM file, with lane information being preserved in the [read group](https://gatk.broadinstitute.org/hc/en-us/articles/360035890671-Read-groups) tags of the reads. Next, the BAM files will be processed to remove [duplicates](https://chaochungkuo.github.io/notes/optical-nonoptical-duplicates/). This is only necessary for Illumina sequencing and sequencing of PCR-amplified DNA, but it will not be detrimental for analysis of Nanopore reads.
 ```mermaid
@@ -490,7 +490,7 @@ flowchart TD;
 	H --- f{{remove duplicates}} --> I[sample 1 BAM, duplicates removed]
 ```
 
-#### Group variant calling
+### Group variant calling
 
 Next, the polished BAM files (with duplicates removed) will be pooled into the groups specified in the sample sheet. Variants will be called and sorted into variant call format files.
 ```mermaid
