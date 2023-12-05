@@ -5,6 +5,7 @@ This pipeline is designed to take reads from Illumina or Nanopore data and gener
 - Variant calls
 - Consensus sequences from variant calls
 - TSVs to easily import variant calls into R for analysis
+- Multiple sequence alignments
 
 
 > [!important] 
@@ -22,7 +23,7 @@ This pipeline is designed to take reads from Illumina or Nanopore data and gener
 
 When your data is ready, you should get an email that looks like this. Click the link highlighted in yellow:
 
-![[Pasted image 20231120164637.png]]
+![Email](docs/email.png?raw=true)
 
 It should ask you for your email and password (you used these to make an account to put in the order).  
 
@@ -94,14 +95,14 @@ $ cd /var/lib/minknow/data/<PROJECT-NAME>/<FLOWCELL-ID>
 $ sudo tar -czvf <PROJECT-NAME>.tar.gz fastq_pass/*
 ```
 
-You should now have a file called `PROJECT-NAME.tar.gz` (where PROJECT-NAME is a placeholder for whatever you named your project in MinKNOW).
+You should now have a file called `<PROJECT-NAME>.tar.gz` (where PROJECT-NAME is a placeholder for whatever you named your project in MinKNOW).
 
 GLOBUS can't recognize any directories above your home directory, so let's move the compressed file somewhere else:
 ```
 $ sudo mv <PROJECT-NAME>.tar.gz ~
 ```
 
-Now `PROJECT-NAME.tar.gz` is in our home directory (`~`).
+Now `<PROJECT-NAME>.tar.gz` is in our home directory (`~`).
 
 Start up Globus Connect Personal on the Nanopore computer:
 ```
@@ -114,7 +115,7 @@ In a web browser, go to https://www.globus.org and click "Log in" at the top rig
 
 Once you're logged in, click the File Manager tab on the left side. You'll see a split screen view of two different data collections:
 
-![[nanopore.png]]
+![Globus Split](docs/globus_split.png?raw=true)
 
 In the left collection search box, type "nanopc" and click the result that pops up. This is the Nanopore computer. In the right box, search "UNC, Research Computing, DataMover" and click the result that pops up. This is Longleaf.
 
@@ -124,56 +125,11 @@ In the left collection search box, type "nanopc" and click the result that pops 
 You will automatically be in the home directory for both collections. In the UNC DataMover collection, change the path to `/work/users/<o>/<n>/<onyen>/`.
 
 Find and click your `<PROJECT-NAME>.tar.gz` file in the left collection (it should be highlighted in blue), then click the blue Start button on the left. A green popup should appear saying the transfer request has been submitted.
-![[transfer.png]]
+![Transfer Request](docs/transfer_request.png?raw=true)
 
 Now click the Activity panel on the left side menu. You should find an entry that says "nanopc to UNC, Research Computing, DataMover". Click it,and it will take you to a page showing the progress of your transfer.
 
 When the condition says "SUCCEEDED" your file transfer has finished.
-
-## Cloning the pipeline
-
-Go to your work directory on Longleaf at `/work/users/o/n/onyen/` (where 'o' and 'n' are the first and second letters of your ONYEN, respectively).
-
-```
-$ cd /work/users/<o>/<n>/<onyen>/
-```
-
-Clone the pipeline from [here](https://github.com/caturcotte/seq_pipeline/tree/main) (click the green button that says Code, then copy the link in the drop down), then go to the directory of the repository.
-```
-$ git clone https://github.com/caturcotte/seq_pipeline.git
-$ cd seq_pipeline/
-```
-
-The directory tree of the pipeline should look like this:
-```
-$ tree
-.
-├── config.yaml
-├── miniforge_installer.sh
-├── README.md
-├── sample_sheet.csv
-├── slurm
-│   └── config.yaml
-├── slurm_sub.sh
-├── Snakefile
-└── workflow
-    ├── alignment.smk
-    ├── calling.smk
-    ├── envs
-    │   ├── bcftools.yaml
-    │   ├── bowtie2.yaml
-    │   ├── bwa.yaml
-    │   ├── concat_vcfs.yaml
-    │   ├── environment.yaml
-    │   ├── freebayes.yaml
-    │   ├── minimap2.yaml
-    │   ├── repeatmasker.yaml
-    │   └── samtools.yaml
-    ├── functions.smk
-    ├── misc.smk
-    ├── qc.smk
-    └── vcf_filtering.smk
-```
 
 We are now ready to clone the pipeline.
 
@@ -185,7 +141,7 @@ If you haven't already, go to the terminal and connect to Longleaf via SSH:
 $ ssh <onyen>@longleaf.unc.edu
 ```
 
-Go to your work directory on Longleaf at `/work/users/o/n/onyen/` (where 'o' and 'n' are the first and second letters of your ONYEN, respectively).
+Go to your work directory on Longleaf at `/work/users/<o>/<n>/<onyen>/` (where 'o' and 'n' are the first and second letters of your ONYEN, respectively).
 
 ```
 $ cd /work/users/<o>/<n>/<onyen>/
@@ -246,11 +202,11 @@ $ nano config.yaml
 
 You will see that there are numerous options for configuring the pipeline for your needs. There are comments in the file explaining the purpose of all of the options. Some of the more notable ones:
 - **`ref_name` and `ref_file`:** The name and location of the reference genome FASTA, respectively. The default is the dm6 release from UCSC, which is already stored on Longleaf. The pipeline will [symlink](https://en.wikipedia.org/wiki/Symbolic_link) (make a shortcut) to your ref_file at `data/resources/ref_name.fa`. Note that the original files are not altered in the pipeline, so there isn't a need to make a copy.
-- **`data_locations`:** These are shorthands for specific locations where your data is located. See the [[Running the DNA sequencing analysis pipeline#Pointing the pipeline to your read files|Pointing the pipeline to your read files]] section for more detail.
+- **`data_locations`:** These are shorthands for specific locations where your data is located. See the section on pointing the pipeline to your read files for more detail.
 
 ### Adding your samples into sample_sheet.csv
 
-In a new terminal, move to a **directory you can easily access via your file browser**. In this directory, open up an [[SFTP]] connection to [[Longleaf]] and copy `sample_sheet.csv` to your local computer.
+In a new terminal, move to a **directory you can easily access via your file browser**. In this directory, open up an SFTP connection to Longleaf and copy `sample_sheet.csv` to your local computer.
 ```
 $ cd ~/Downloads
 $ sftp <onyen>@longleaf.unc.edu
@@ -433,12 +389,13 @@ If not, the job is either still running or there will be some error you can see 
 
 All of the output files should be in the `data/` directory:
 
-| output type | location         | recommended tool to view |
-| ----------- | ---------------- | ------------------------ |
-| alignments  | data/alignments/ | IGV                      |
-| calls       | data/calls/      | text editor/less/bcftools              |
-| consensus   | data/consensus/  | Snapgene alignment/IGV                         |
-| tsvs            |  data/tsvs                | R                         |
+| output type                  | location         | recommended tool(s) to view |
+|------------------------------|------------------|-----------------------------|
+| alignments                   | data/alignments/ | IGV                         |
+| calls                        | data/calls/      | bcftools, less, IGV         |
+| consensus                    | data/consensus/  | Snapgene, IGV               |
+| multiple sequence alignments | data/msa         | Snapgene, IGV               |
+| tsvs                         | data/tsvs        | R                           |
 
 You can use IGV on Longleaf directly so long as you use the `-X` flag when establishing your SSH connection:
 
@@ -505,7 +462,10 @@ Using these VCFs, you can make consensus sequences for your samples by applying 
 flowchart TD
 	A[sample 1 VCF] & B[reference FASTA] ---q{{make consensus sequence}}-->C[sample 1 reference FASTA]
 ```
+Consensus sequences can be aligned to one another and the reference using MUSCLE, generating a FASTA with gaps in the alignment represented by `-`.
 
-
-
+```mermaid
+flowchart TD
+	A[sample 1 consensus] & B[sample 2 consensus] & C[sample 3 consensus] & D[reference FASTA]---q{{multiple sequence alignment}}--->E[multiple alignment FASTA]
+```
 [1] Keightley PD, Trivedi U, Thomson M, Oliver F, Kumar S, Blaxter ML. Analysis of the genome sequences of three Drosophila melanogaster spontaneous mutation accumulation lines. Genome Res. 2009 Jul;19(7):1195-201. doi: 10.1101/gr.091231.109. Epub 2009 May 13. PMID: 19439516; PMCID: PMC2704435.
