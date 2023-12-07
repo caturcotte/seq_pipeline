@@ -1,10 +1,20 @@
-# options are tsvs (for loading calls into R), consensus (consensus sequences from calls), calls, or alignments
-output: 'tsvs'
+# options are one or more of:
+# alignments
+# calls
+# consensus (consensus sequences from calls)
+# msa (multiple sequence alignment of all of the consensus seqs in a group)
+# tsvs (converts vcf to tsv to easily load calls into R)
+output:
+  - alignments
+  - calls
+  - consensus
+  - msa
+  - tsvs
 
 # location of the reference genome on longleaf
 ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
-mask_repeats: True
+mask_repeats: False # masking repeats is NOT compatible with MSA output
 
 # file locations to use in the sample sheet.
 # If location is set to proj for paired sample A, snakemake will look for the files:
@@ -16,15 +26,17 @@ data_locations:
 illumina:
   aligner: "bwa" # bwa or bowtie2
 
-caller: "bcftools" # bcftools or freebayes
+caller: "freebayes" # bcftools or freebayes
 
 # how to filter variants
 filtering:
     - "QUAL>10" # basic quality filtering
-    - "QUAL/AO > 10" # scale quality by depth
-    - "DP > 20 & DP < 200" # depth cutoffs
+    - "QUAL / FORMAT/AO > 10" # scale quality by depth
+    - "FORMAT/DP > 20 & FORMAT/DP < 200" # depth cutoffs
     - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
 
 bcftools_opts:
   call_as_groups: False
 
+freebayes_opts:
+  chunks: 100

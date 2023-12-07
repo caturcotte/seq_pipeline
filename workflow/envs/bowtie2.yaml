@@ -4,3 +4,4 @@ channels:
   - nodefaults
 dependencies:
   - bowtie2
+  - samtools

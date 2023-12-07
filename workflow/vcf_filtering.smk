@@ -20,7 +20,7 @@ rule filter_low_quality:
     params:
         qual_cutoff=get_qual_cutoff,
     shell:
-        "bcftools filter -i 'QUAL>{params.qual_cutoff}' -g 5 -Ob -o {output.bcf} {input.bcf}"
+        "bcftools filter {params.qual_cutoff} -g 5 -Ob -o {output.bcf} {input.bcf}"
 
 
 rule filter_het:
@@ -52,7 +52,7 @@ rule make_consensus_genome:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        "data/seqs/{sample}.fa",
+        "data/consensus/{sample}.fa",
     shell:
         "bcftools consensus -f {input.ref} {input.bcf} -o {output}"
 
