@@ -9,9 +9,9 @@ rule symlink_ref:
 
 rule mask_repeats:
     input:
-        "data/resources/{ref}.fa",
+        f"data/resources/{config['ref_name']}.fa",
     output:
-        "data/resources/{ref}.fa.masked",
+        f"data/resources/{config['ref_name']}.fa.masked",
     threads: 16
     shell:
         "RepeatMasker -species 7227 -pa {threads} -dir data/resources/ -s {input}"
@@ -19,9 +19,9 @@ rule mask_repeats:
 
 rule mv_masked_ref:
     input:
-        "data/resources/{ref}.fa.masked",
+        f"data/resources/{config['ref_name']}.fa.masked",
     output:
-        "data/resources/{ref}_masked.fa",
+        f"data/resources/{config['ref_name']}_masked.fa",
     shell:
         "mv {input} {output}"
 
@@ -122,18 +122,22 @@ rule bowtie2_build:
         "v2.6.0/bio/bowtie2/build"
 
 
-# rule generate_freebayes_regions:
-#     input:
-#         ref=get_ref_to_generate_regions,
-#         idx=lambda w: get_ref_to_generate_regions(w, fai=True),
-#     output:
-#         regions=expand("data/resources/regions/{{ref}}.{{chrom}}.region.{i}.bed", i=chunks),
-#     params:
-#         nchunks=config["freebayes_opts"]["nchunks"],
-#     resources:
-#         time="5-0",
-#     shell:
-#         "scripts/fasta_generate_regions.py --chunks --bed=data/resources/regions/{wildcards.ref} --chromosome={wildcards.chrom} {input.idx} {params.nchunks}"
+rule generate_freebayes_regions:
+    input:
+        ref=get_ref,
+        idx=lambda w: get_ref(w, fai=True),
+    output:
+        regions=expand(
+            f"data/resources/regions/{config['ref_name']}." + "{label}.region.{i}.bed",
+            i=chunks, label=get_labels()
+        ),
+    params:
+        nchunks=config["freebayes_opts"]["chunks"],
+        basename=config['ref_name'],
+    resources:
+        time="5-0",
+    shell:
+        "scripts/fasta_generate_regions.py --chunks --bed=data/resources/regions/{params.basename} {input.idx} {params.nchunks}"
 
 
 rule bcftools_index:
@@ -145,3 +149,65 @@ rule bcftools_index:
     #     "envs/bcftools.yaml"
     shell:
         "bcftools index {input}"
+
+
+rule separate_ref_fasta:
+    input:
+        f"data/resources/{config['ref_name']}.fa",
+    output:
+        expand(
+            f"data/resources/{config['ref_name']}.fa.split/{config['ref_name']}"
+            + ".part_{label}.fa",
+            label=get_labels(),
+        ),
+    shell:
+        "seqkit split -i --two-pass --force {input}"
+
+
+rule mv_fastas:
+    input:
+        get_fasta_to_mv,
+    output:
+        "data/consensus/{sample_or_ref}_{label}.fa",
+    shell:
+        "mv {input} {output}"
+
+
+rule separate_sample_fastas:
+    input:
+        "data/consensus/{sample}.fa",
+    output:
+        expand(
+            "data/consensus/{{sample}}.fa.split/{{sample}}.part_{label}.fasta",
+            label=get_labels(),
+        ),
+    shell:
+        "seqkit split -i --two-pass --force {input}"
+
+
+rule edit_fasta_id:
+    input:
+        "data/consensus/{sample_or_ref}_{label}.fa",
+    output:
+        "data/consensus/{sample_or_ref}_{label}_idfix.fa",
+    shell:
+        "sed -r 's/^(>)/\\1{wildcards.sample_or_ref}_/' {input} > {output}"
+
+
+rule cat_seqs:
+    input:
+        get_fas_to_cat,
+    output:
+        "data/consensus/{group}_{label}.fa",
+    shell:
+        "cat {input} > {output}"
+
+
+rule multiple_alignment:
+    input:
+        "data/consensus/{group}_{label}.fa",
+    output:
+        "data/msa/{label}_{group}.afa",
+    threads: 4
+    shell:
+        "muscle -align {input} -output {output} -threads {threads}"

@@ -11,7 +11,7 @@ rule align_bwa:
     conda:
         "envs/bwa.yaml"
     shell:
-        "bwa mem {input.ref} {input.reads} | bcftools -Ob -1 -o {output}"
+        "bwa mem {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
 
 
 rule align_bowtie2:
@@ -28,7 +28,7 @@ rule align_bowtie2:
     conda:
         "envs/bowtie2.yaml"
     shell:
-        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} | bcftools -Ob -1 -o {output}"
+        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id {wildcards.iden} --rg 'SM:{wildcards.sample}' | samtools view -1 -o {output}"
 
 
 rule align_minimap2:
@@ -36,14 +36,14 @@ rule align_minimap2:
         reads=get_reads_to_map,
         ref=get_ref_minimap2,
     output:
-        "data/alignments/{sample}_{iden}_mm2.sam",
+        "data/alignments/{sample}_{iden}_mm2.bam",
     resources:
         time="5-0",
     threads: 16
     conda:
         "envs/minimap2.yaml"
     shell:
-        "minimap2 -ax map-ont {input.ref} {input.reads} --threads {threads} | bcftools -Ob -1 -o {output}"
+        "minimap2 -ax map-ont {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
 
 
 rule fix_mate_pairs:
@@ -53,8 +53,6 @@ rule fix_mate_pairs:
         temp("data/alignments/{sample}_{iden}.bam"),
     resources:
         time="2:00:00",
-    # conda:
-    #     "envs/samtools.yaml"
     shell:
         "samtools fixmate -m -O bam,level=1 {input} {output}"
 
@@ -64,11 +62,10 @@ rule sort_bams:
         "data/alignments/{sample}_{iden}.bam",
     output:
         temp("data/alignments/{sample}_{iden}_sort.bam"),
-    threads: 4
+    threads: 8
     resources:
         time="2:00:00",
-    # conda:
-    #     "envs/samtools.yaml"
+        mem_mb=20000,
     shell:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
 
@@ -83,7 +80,7 @@ rule merge_bams:
         "sambamba merge -t {threads} {output} {input}"
 
 
-rule mark_duplicates:
+rule remove_duplicates:
     input:
         bam="data/alignments/{sample}.bam",
         ref=get_ref,
@@ -105,7 +102,5 @@ rule index_bams:
         "data/alignments/{sample}_dedup.bam.bai",
     resources:
         time="2:00:00",
-    # conda:
-    #     "envs/samtools.yaml"
     shell:
         "sambamba index {input}"

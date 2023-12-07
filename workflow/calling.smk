@@ -44,19 +44,29 @@ ruleorder: bcftools_call > separate_into_samples
 
 rule freebayes:
     input:
-        alns=get_alns_for_pileup,
-        idxs=lambda w: get_alns_for_pileup(w, bai=True),
+        alns=get_alns_in_group,
+        idxs=lambda w: get_alns_in_group(w, bai=True),
+        region=get_region_from_sample,
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        temp("data/calls/{group}_freebayes_unprocessed.bcf"),
-    threads: 16
-    params:
-        chunksize=100000,
+        "data/calls/{group}_{label}_freebayes_{i}.bcf",
+    threads: 1
     resources:
-        time="1-0",
-    wrapper:
-        "v2.13.0/bio/freebayes"
+        time="2-0",
+        mem_mb="1000",
+    shell:
+        "freebayes -f {input.ref} -t {input.region} {input.alns} | bcftools view -Ob -o {output}"
+
+rule concat_freebayes:
+    input:
+        calls=expand("data/calls/{{group}}_{label}_freebayes_{i}.bcf", i=chunks, label=get_labels()),
+        idxs=expand("data/calls/{{group}}_{label}_freebayes_{i}.bcf.csi", i=chunks, label=get_labels()),
+    output:
+        "data/calls/{group}_freebayes_unprocessed.bcf",
+    threads: 4
+    shell:
+        "bcftools concat -a -D {input.calls} -o {output}"
 
 
 rule separate_into_samples:
