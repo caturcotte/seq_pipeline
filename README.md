@@ -125,6 +125,7 @@ In the left collection search box, type "nanopc" and click the result that pops 
 You will automatically be in the home directory for both collections. In the UNC DataMover collection, change the path to `/work/users/<o>/<n>/<onyen>/`.
 
 Find and click your `<PROJECT-NAME>.tar.gz` file in the left collection (it should be highlighted in blue), then click the blue Start button on the left. A green popup should appear saying the transfer request has been submitted.
+
 ![Transfer Request](docs/transfer_request.png?raw=true)
 
 Now click the Activity panel on the left side menu. You should find an entry that says "nanopc to UNC, Research Computing, DataMover". Click it,and it will take you to a page showing the progress of your transfer.
