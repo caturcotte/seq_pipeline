@@ -163,3 +163,5 @@ cython_debug/
 logs/
 *.out
 data/
+RM*
+dag.svg

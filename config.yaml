@@ -8,13 +8,12 @@ output:
   - alignments
   - calls
   - consensus
-  - msa
   - tsvs
 
 # location of the reference genome on longleaf
 ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
-mask_repeats: False # masking repeats is NOT compatible with MSA output
+mask_repeats: True # masking repeats is NOT compatible with MSA output
 
 # file locations to use in the sample sheet.
 # If location is set to proj for paired sample A, snakemake will look for the files:
@@ -24,19 +23,24 @@ data_locations:
   proj: "/work/users/c/a/cannecar/pipeline_test/"
 
 illumina:
-  aligner: "bwa" # bwa or bowtie2
+  aligner: "bowtie2" # bwa or bowtie2
 
-caller: "freebayes" # bcftools or freebayes
+caller: "bcftools" # bcftools or freebayes
 
 # how to filter variants
 filtering:
-    - "QUAL>10" # basic quality filtering
-    - "QUAL / FORMAT/AO > 10" # scale quality by depth
-    - "FORMAT/DP > 20 & FORMAT/DP < 200" # depth cutoffs
-    - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
+  - "QUAL>10"
+  # all:
+  #   - "QUAL>10" # basic quality filtering
+  #   - "FORMAT/DP > 20 & FORMAT/DP < 200" # depth cutoffs
+  # bcftools:
+  # freebayes:
+  #   - "QUAL / FORMAT/AO > 10" # scale quality by depth
+  #   - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
 
 bcftools_opts:
   call_as_groups: False
+  call_type: "c" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline
 
 freebayes_opts:
   chunks: 100

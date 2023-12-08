@@ -4,8 +4,6 @@ import os
 import re
 import sys
 
-print(sys.version)
-
 
 reference = config["reference"]
 
@@ -229,10 +227,15 @@ def get_caller(w):
 
 def get_call_type(w):
     if config["caller"] == "freebayes" or config["bcftools_opts"]["call_as_groups"]:
-        return f".tmp/group_call_{w.sample}_{config['caller']}.txt"
+        return f".tmp/group_call_{get_group_name(w)}_{config['caller']}.txt"
     else:
         return f".tmp/single_call_{w.sample}.txt"
 
+def group_or_single(w):
+    if config["bcftools_opts"]["call_as_groups"]:
+        return f".tmp/group_call_{w.sample_or_group}_bcftools.txt"
+    else:
+        return f".tmp/single_call_{w.sample_or_group}.txt"
 
 # locate reads based on the location(s) listed in the sample sheet
 def get_file_locations(w, read=None):
@@ -288,12 +291,14 @@ def get_msa_outputs(ref=reference, groups=groups, labels=get_labels()):
         [outputs.append(f"data/msa/{j}_{i}.afa") for j in labels]
     return outputs
 
+def get_group_name(w, groups=groups):
+    for key, val in groups.items():
+        if w.sample in val:
+            return key 
 
 # return the group that a sample belongs to
 def get_group_from_sample(w, groups=groups):
-    for key, val in groups.items():
-        if w.sample in val:
-            return f"data/calls/{key}_{w.caller}_unprocessed.bcf"
+    return f"data/calls/{get_group_name(w)}_{w.caller}_unprocessed.bcf"
 
 
 # for ndj analysis, to merge progeny tsvs together
