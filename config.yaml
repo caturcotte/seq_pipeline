@@ -16,11 +16,11 @@ reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 mask_repeats: True # masking repeats is NOT compatible with MSA output
 
 # file locations to use in the sample sheet.
-# If location is set to proj for paired sample A, snakemake will look for the files:
-# /proj/sekellab/projects/pipeline_test/A_1.fq.gz
-# /proj/sekellab/projects/pipeline_test/A_2.fq.gz
+# If location is set to data for paired sample A, snakemake will look for the files:
+# /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
+# /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
 data_locations:
-  proj: "/work/users/c/a/cannecar/pipeline_test/"
+  data: "/work/users/<o>/<n>/<onyen>/data/"
 
 illumina:
   aligner: "bowtie2" # bwa or bowtie2
@@ -43,4 +43,4 @@ bcftools_opts:
   call_type: "c" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline
 
 freebayes_opts:
-  chunks: 100
+  chunks: 100 # you shouldn't need to change this

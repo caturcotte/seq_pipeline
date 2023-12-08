@@ -5,7 +5,7 @@
 #SBATCH -n 1
 #SBATCH -t 5-
 #SBATCH --mail-type=end
-#SBATCH --mail-user=cannecar@ad.unc.edu
+#SBATCH --mail-user=<YOUR-EMAIL-HERE>
 
 module purge
 module load seqkit

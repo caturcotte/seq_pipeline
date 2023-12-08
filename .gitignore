@@ -166,3 +166,4 @@ data/
 RM*
 dag.svg
 .nfs*
+.tmp/
