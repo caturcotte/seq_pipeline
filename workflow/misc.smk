@@ -107,7 +107,7 @@ rule minimap2_idx:
 
 rule bowtie2_build:
     input:
-        "{prefix}",
+        ref="{prefix}",
     output:
         multiext(
             "{prefix}",
