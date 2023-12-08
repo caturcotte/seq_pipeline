@@ -165,3 +165,4 @@ logs/
 data/
 RM*
 dag.svg
+.nfs*
