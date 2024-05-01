@@ -143,22 +143,22 @@ def get_alns_to_merge(w):
 def get_reads(w):
     path = get_data_path(w.sample)
     if is_paired(w.sample):
-        r1 = os.path.join(path, "{sample}_{iden}_1.fq.gz")
-        r2 = os.path.join(path, "{sample}_{iden}_2.fq.gz")
+        r1 = os.path.join(path, "{sample}_1.fq.gz")
+        r2 = os.path.join(path, "{sample}_2.fq.gz")
         return [r1, r2]
     else:
-        return os.path.join(path, "{sample}_{iden}.fq.gz")
+        return os.path.join(path, "{sample}.fq.gz")
 
 
 def get_reads_to_trim(w):
     sample = get_sample(w.sample)
     if is_paired(w.sample):
         return [
-            "data/reads/{sample}_{iden}_1.fq.gz",
-            "data/reads/{sample}_{iden}_2.fq.gz",
+            "data/reads/{sample}_1.fq.gz",
+            "data/reads/{sample}_2.fq.gz",
         ]
     else:
-        return "data/reads/{sample}_{iden}.fq.gz"
+        return "data/reads/{sample}.fq.gz"
 
 
 def get_sample(sample_name):
@@ -194,11 +194,11 @@ def get_fastqc_files(w):
 def get_aligned_reads(w):
     sample = get_sample(w.sample)
     if sample["aligner"].iloc[0].lower() == "bwa":
-        return (f"data/alignments/{w.sample}_{w.iden}_bwa.bam",)
+        return (f"data/alignments/{w.sample}__bwa.bam",)
     elif sample["aligner"].iloc[0].lower() == "bowtie2":
-        return (f"data/alignments/{w.sample}_{w.iden}_bt2.bam",)
+        return (f"data/alignments/{w.sample}_bt2.bam",)
     elif sample["aligner"].iloc[0].lower() == "minimap2":
-        return (f"data/alignments/{w.sample}_{w.iden}_mm2.bam",)
+        return (f"data/alignments/{w.sample}_mm2.bam",)
     else:
         raise ValueError(
             "Invalid aligner in config.yaml: options are bwa, bowtie2 or minimap2"
@@ -343,7 +343,7 @@ def get_query_format(w):
 
 def get_reads_to_map(w, r=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    f = "data/reads/{sample}_{iden}"
+    f = "data/reads/{sample}"
     if sample["read_type"].iloc[0] == "paired":
         basename = [f"{f}_1", f"{f}_2"]
     else:

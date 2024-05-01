@@ -39,7 +39,7 @@ rule symlink_fqs_single:
     input:
         get_reads,
     output:
-        "data/reads/{sample}_{iden}.fq.gz",
+        "data/reads/{sample}.fq.gz",
     shell:
         "ln -s {input} {output}"
 
@@ -48,7 +48,7 @@ rule symlink_fqs_paired:
     input:
         get_reads,
     output:
-        ["data/reads/{sample}_{iden}_1.fq.gz", "data/reads/{sample}_{iden}_2.fq.gz"],
+        ["data/reads/{sample}_1.fq.gz", "data/reads/{sample}_2.fq.gz"],
     shell:
         "ln -s {input[0]} {output[0]} && ln -s {input[1]} {output[1]}"
 

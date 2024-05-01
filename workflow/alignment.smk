@@ -4,14 +4,14 @@ rule align_bwa:
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
-        "data/alignments/{sample}_{iden}_bwa.bam",
+        "data/alignments/{sample}_bwa.bam",
     resources:
         time="5-0",
     threads: 16
     conda:
         "envs/bwa.yaml"
     shell:
-        "bwa mem {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
+        "bwa mem {input.ref} {input.reads} -R '@RG\\tID:1\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
 
 
 rule align_bowtie2:
@@ -19,7 +19,7 @@ rule align_bowtie2:
         reads=get_reads_to_map,
         ref=get_ref_bowtie2,
     output:
-        "data/alignments/{sample}_{iden}_bt2.bam",
+        "data/alignments/{sample}_bt2.bam",
     params:
         ref_basename=get_ref,
     resources:
@@ -28,7 +28,7 @@ rule align_bowtie2:
     conda:
         "envs/bowtie2.yaml"
     shell:
-        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id {wildcards.iden} --rg 'SM:{wildcards.sample}' | samtools view -1 -o {output}"
+        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id 1 --rg 'SM:{wildcards.sample}' | samtools view -1 -o {output}"
 
 
 rule align_minimap2:
@@ -36,21 +36,21 @@ rule align_minimap2:
         reads=get_reads_to_map,
         ref=get_ref_minimap2,
     output:
-        "data/alignments/{sample}_{iden}_mm2.bam",
+        "data/alignments/{sample}_mm2.bam",
     resources:
         time="5-0",
     threads: 16
     conda:
         "envs/minimap2.yaml"
     shell:
-        "minimap2 -ax map-ont {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
+        "minimap2 -ax map-ont {input.ref} {input.reads} -R '@RG\\tID:1\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
 
 
 rule fix_mate_pairs:
     input:
         get_aligned_reads,
     output:
-        temp("data/alignments/{sample}_{iden}.bam"),
+        temp("data/alignments/{sample}_fixed.bam"),
     resources:
         time="2:00:00",
     shell:
@@ -59,9 +59,9 @@ rule fix_mate_pairs:
 
 rule sort_bams:
     input:
-        "data/alignments/{sample}_{iden}.bam",
+        "data/alignments/{sample}_fixed.bam",
     output:
-        temp("data/alignments/{sample}_{iden}_sort.bam"),
+        temp("data/alignments/{sample}_sort.bam"),
     threads: 8
     resources:
         time="2:00:00",
