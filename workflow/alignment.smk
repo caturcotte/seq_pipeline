@@ -61,7 +61,7 @@ rule sort_bams:
     input:
         "data/alignments/{sample}_fixed.bam",
     output:
-        temp("data/alignments/{sample}_sort.bam"),
+        temp("data/alignments/{sample}.bam"),
     threads: 8
     resources:
         time="2:00:00",
@@ -70,14 +70,14 @@ rule sort_bams:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
 
 
-rule merge_bams:
-    input:
-        get_alns_to_merge,
-    output:
-        "data/alignments/{sample}.bam",
-    threads: 4
-    shell:
-        "sambamba merge -t {threads} {output} {input}"
+# rule merge_bams:
+#     input:
+#         get_alns_to_merge,
+#     output:
+#         "data/alignments/{sample}.bam",
+#     threads: 4
+#     shell:
+#         "sambamba merge -t {threads} {output} {input}"
 
 
 rule remove_duplicates:
