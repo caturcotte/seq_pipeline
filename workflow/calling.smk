@@ -54,7 +54,7 @@ rule freebayes:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf="data/calls/{group}_{label}_freebayes_{i}.bcf",
+        bcf=temp("data/calls/{group}_{label}_freebayes_{i}.bcf"),
     threads: 1
     resources:
         time="2-0",

@@ -8,6 +8,7 @@
 #SBATCH --mail-user=<YOUR-EMAIL-HERE>
 
 module purge
+module load anaconda
 module load seqkit
 module load repeatmasker
 module load samtools
