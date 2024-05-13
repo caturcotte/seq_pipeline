@@ -129,11 +129,12 @@ rule generate_freebayes_regions:
     output:
         regions=expand(
             f"data/resources/regions/{config['ref_name']}." + "{label}.region.{i}.bed",
-            i=chunks, label=get_labels()
+            i=chunks,
+            label=get_labels(),
         ),
     params:
         nchunks=config["freebayes_opts"]["chunks"],
-        basename=config['ref_name'],
+        basename=config["ref_name"],
     resources:
         time="5-0",
     shell:

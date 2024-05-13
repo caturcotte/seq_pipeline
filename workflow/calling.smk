@@ -5,13 +5,13 @@ rule bcftools_mpileup_single:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf=temp("data/calls/{sample}_bcftools_pileup.bcf"),
-        txt=temp(".tmp/single_call_{sample}.txt"),
+        bcf=temp("data/calls/{sample}_bcftools_single_pileup.bcf"),
     params:
-        extra="--max-depth 200 --min-BQ 15",
+        extra=config["bcftools_opts"]["pileup_options"],
     threads: 16
     shell:
-        "bcftools mpileup -f {input.ref} {params.extra} -Ou -o {output.bcf} --threads {threads} {input.alns} && touch {output.txt}"
+        "bcftools mpileup -f {input.ref} -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
+
 
 rule bcftools_mpileup_group:
     input:
@@ -20,30 +20,30 @@ rule bcftools_mpileup_group:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf="data/calls/{group}_bcftools_pileup.bcf",
-        txt=temp(".tmp/group_call_{group}_bcftools.txt"),
+        bcf="data/calls/{group}_bcftools_group_pileup.bcf",
     params:
-        extra="--max-depth 200 --min-BQ 15",
+        extra=config["bcftools_opts"]["pileup_options"],
     resources:
         mem_mb=50000,
         time="2-0",
     threads: 32
     shell:
-        "bcftools mpileup -f {input.ref} {params.extra} -Ou -o {output.bcf} --threads {threads} {input.alns} && touch {output.txt}"
+        "bcftools mpileup -f {input.ref} -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
+
 
 rule bcftools_call:
     input:
-        pileup="data/calls/{sample_or_group}_bcftools_pileup.bcf",
-        txt=group_or_single,
+        pileup=lambda w: group_or_single(w),
     output:
         bcf="data/calls/{sample_or_group}_bcftools_unprocessed.bcf",
+        txt=temp(".tmp/{sample_or_group}_bcftools.txt"),
     threads: 16
     params:
-        call_type=config['bcftools_opts']['call_type']
+        call_type=config["bcftools_opts"]["call_type"],
     resources:
         time="1-0",
     shell:
-        "bcftools call -{params.call_type}v -o {output} --threads {threads} {input.pileup}"
+        "bcftools call -{params.call_type}v -o {output.bcf} --threads {threads} {input.pileup} && touch {output.txt}"
 
 
 rule freebayes:
@@ -62,13 +62,22 @@ rule freebayes:
     shell:
         "freebayes -f {input.ref} -t {input.region} {input.alns} | bcftools view -Ob -o {output.bcf}"
 
+
 rule concat_freebayes:
     input:
-        calls=expand("data/calls/{{group}}_{label}_freebayes_{i}.bcf", i=chunks, label=get_labels()),
-        idxs=expand("data/calls/{{group}}_{label}_freebayes_{i}.bcf.csi", i=chunks, label=get_labels()),
+        calls=expand(
+            "data/calls/{{group}}_{label}_freebayes_{i}.bcf",
+            i=chunks,
+            label=get_labels(),
+        ),
+        idxs=expand(
+            "data/calls/{{group}}_{label}_freebayes_{i}.bcf.csi",
+            i=chunks,
+            label=get_labels(),
+        ),
     output:
         bcf="data/calls/{group}_freebayes_unprocessed.bcf",
-        txt=".tmp/group_call_{group}_freebayes.txt"
+        txt=temp(".tmp/group_call_{group}_freebayes.txt"),
     threads: 4
     shell:
         "bcftools concat -a -D {input.calls} -o {output.bcf} && touch {output.txt}"
@@ -83,5 +92,6 @@ rule separate_into_samples:
         time="2:00:00",
     shell:
         "bcftools view -s {wildcards.sample} -a -o {output.bcfs} {input}"
+
 
 ruleorder: bcftools_call > separate_into_samples

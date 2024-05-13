@@ -5,7 +5,7 @@
 #SBATCH -n 1
 #SBATCH -t 5-
 #SBATCH --mail-type=end
-#SBATCH --mail-user=<YOUR-EMAIL-HERE>
+#SBATCH --mail-user=cannecar@ad.unc.edu
 
 module purge
 module load anaconda

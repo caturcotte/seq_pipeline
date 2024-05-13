@@ -90,7 +90,6 @@ rule mosdepth:
 rule vcf_stats:
     input:
         calls=get_caller,
-        call_type=get_call_type,
         # ref=get_ref,
     output:
         "data/qc/bcftools/{sample}_{caller}.stats.txt",

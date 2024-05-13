@@ -31,7 +31,7 @@ samples_and_ref = samples + [config["ref_name"]]
 wildcard_constraints:
     group="|".join([i for i in groups.keys()]),
     sample="|".join([i for i in samples]),
-    ref=get_ref_basename(),
+    ref=get_ref(base=True),
     iden="|".join(prefixes),
     sample_or_ref="|".join(samples_and_ref),
     i=r"\d+",

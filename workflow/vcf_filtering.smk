@@ -2,7 +2,6 @@ rule bcftools_norm:
     input:
         calls=get_caller,
         ref=get_ref,
-        call_type=get_call_type,
     output:
         bcf=temp("data/calls/{sample}_norm.bcf"),
     resources:
@@ -20,7 +19,7 @@ rule filter_low_quality:
     params:
         qual_cutoff=get_qual_cutoff,
     shell:
-        "bcftools filter {params.qual_cutoff} -g 5 -Ob -o {output.bcf} {input.bcf}"
+        "bcftools filter {params.qual_cutoff} -s LowQual -g 5 -Ob -o {output.bcf} {input.bcf}"
 
 
 rule filter_het:

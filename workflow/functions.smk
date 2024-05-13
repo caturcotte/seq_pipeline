@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
-import os
 import re
-import sys
+from pathlib import Path
 
 
 reference = config["reference"]
@@ -31,10 +30,10 @@ sample_sheet["trim"] = np.where(
 
 chunks = list(range(1, config["freebayes_opts"]["chunks"] + 1))
 
-if not "msa" in config["output"]:
-    mask_repeats = config["mask_repeats"]
-else:
-    mask_repeats = False
+if config["mask_repeats"] and "msa" in config["output"]:
+    raise ValueError(
+        "Masking repeats is not compatible with MSA output. Please remove MSA from required output or disable mask_repeats in config.yaml."
+    )
 
 # if not calling as groups, groups can be left blank in sample sheet
 # if not, throw an error if any are left blank
@@ -47,7 +46,7 @@ try:
 except:
     if config["call_as_groups"]:
         raise ValueError(
-            "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet"
+            "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet."
         )
 
 
@@ -59,28 +58,27 @@ def is_paired(sample_name):
     elif read_type == "single":
         return False
     else:
-        raise ValueError("Read type must be either paired or single")
+        raise ValueError(
+            f"Incorrect read type specified for sample {sample} in sample_sheet.csv. Read type must be either paired or single."
+        )
 
 
 def get_read_source(sample):
     return sample["source"].iloc[0].lower()
 
 
-def get_ref_basename(mask_repeats=mask_repeats):
-    basename = "data/resources/"
-    basename += config["ref_name"]
-    if mask_repeats:
-        basename += "_masked"
-    return basename
-
-
 # return reference file, name depends on whether repeats are being masked
-def get_ref(w, fai=False):
-    basename = get_ref_basename()
-    basename += ".fa"
-    if fai:
-        basename += ".fai"
-    return basename
+def get_ref(w=None, base=False, fai=False):
+    name = ["data/resources/", config["ref_name"]]
+    if config["mask_repeats"]:
+        name.append("_masked")
+    if base:
+        return "".join(name)
+    else:
+        name.append(".fa")
+        if fai:
+            name.append(".fai")
+        return "".join(name)
 
 
 def get_labels(reference=reference):
@@ -98,23 +96,23 @@ def get_fasta_to_mv(w):
     if w.sample_or_ref == config["ref_name"]:
         return f"data/resources/{config['ref_name']}.fa.split/{config['ref_name']}.part_{w.label}.fa"
     else:
-        return f"data/consensus/{w.sample_or_ref}.fa.split/{w.sample_or_ref}.part_{w.label}.fasta"
+        return (
+            "data/consensus/{sample_or_ref}.fa.split/{sample_or_ref}.part_{label}.fasta"
+        )
 
 
 def get_data_path(sample_name):
     sample = get_sample(sample_name)
     source = get_read_source(sample)
     location = sample["location"].iloc[0]
+    filepath = Path(config["data_locations"][location])
     if source == "novogene":
-        return os.path.join(
-            config["data_locations"][location],
+        return filepath.joinpath(
             f"usftp21.novogene.com/01.RawData/",
             sample_name,
         )
     elif source == "nanopore":
-        return os.path.join(
-            config["data"][location], f"fastq_pass/{location}/", sample_name
-        )
+        return filepath.joinpath(f"fastq_pass/{location}/", sample_name)
     else:
         raise ValueError(
             "One or more samples could not be found in the provided data location, but no valid alternate source was listed. The source in sample sheet must be either novogene or nanopore."
@@ -123,31 +121,33 @@ def get_data_path(sample_name):
 
 def get_ids_for_sample(sample_name):
     path = get_data_path(sample_name)
-    files = os.listdir(path)
     if is_paired(sample_name):
         regex = r"(?<=" + sample_name + r"_).*(?=_[12].fq.gz)"
     else:
         regex = r"(?<=" + sample_name + r"_).*(?=.fq.gz)"
     p = re.compile(regex)
-    matches = [p.findall(i) for i in files]
+    matches = [p.findall(str(i)) for i in path.iterdir()]
     return [val for lst in matches for val in lst]
 
 
 def get_alns_to_merge(w):
     return [
-        os.path.join("data/alignments/", f"{w.sample}_{i}_sort.bam")
+        Path("data/alignments/").joinpath(f"{w.sample}_{i}_sort.bam")
         for i in get_ids_for_sample(w.sample)
     ]
 
 
 def get_reads(w):
     path = get_data_path(w.sample)
-    if is_paired(w.sample):
-        r1 = os.path.join(path, "{sample}_{iden}_1.fq.gz")
-        r2 = os.path.join(path, "{sample}_{iden}_2.fq.gz")
-        return [r1, r2]
+    if lanes_marked():
+        prefix = "{sample}_{iden}"
     else:
-        return os.path.join(path, "{sample}_{iden}.fq.gz")
+        prefix = "{sample}"
+    if is_paired(w.sample):
+        r1 = path.joinpath(f"{prefix}_1.fq.gz")
+        r2 = path.joinpath(f"{prefix}_2.fq.gz")
+    else:
+        return path.joinpath("{sample}_{iden}.fq.gz")
 
 
 def get_reads_to_trim(w):
@@ -187,7 +187,6 @@ def get_fastqc_files(w):
         )
     else:
         return (expand("data/qc/fastqc/{sample}_fastqc.zip", sample=samples),)
-    get_trim_files,
 
 
 # get required names of aligned reads, determines which aligner is used
@@ -201,7 +200,7 @@ def get_aligned_reads(w):
         return (f"data/alignments/{w.sample}_{w.iden}_mm2.bam",)
     else:
         raise ValueError(
-            "Invalid aligner in config.yaml: options are bwa, bowtie2 or minimap2"
+            "Invalid aligner in config.yaml: options are bwa, bowtie2 or minimap2."
         )
 
 
@@ -225,26 +224,21 @@ def get_caller(w):
     return f"data/calls/{w.sample}_{config['caller']}_unprocessed.bcf"
 
 
-def get_call_type(w):
-    if config["caller"] == "freebayes" or config["bcftools_opts"]["call_as_groups"]:
-        return f".tmp/group_call_{get_group_name(w)}_{config['caller']}.txt"
-    else:
-        return f".tmp/single_call_{w.sample}.txt"
-
 def group_or_single(w):
     if config["bcftools_opts"]["call_as_groups"]:
-        return f".tmp/group_call_{w.sample_or_group}_bcftools.txt"
+        return "data/calls/{sample_or_group}_bcftools_group_pileup.bcf"
     else:
-        return f".tmp/single_call_{w.sample_or_group}.txt"
+        return "data/calls/{sample_or_group}_bcftools_single_pileup.bcf"
+
 
 # locate reads based on the location(s) listed in the sample sheet
 def get_file_locations(w, read=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    base_dir = config["data_locations"][sample["location"].iloc[0]]
+    base_dir = Path(config["data_locations"][sample["location"].iloc[0]])
     if sample["read_type"].iloc[0] == "paired":
-        return os.path.join(base_dir, w.sample + f"_{read}.fq.gz")
+        return base_dir.join(base_dir, w.sample + f"_{read}.fq.gz")
     elif sample["read_type"].iloc[0] == "single":
-        return os.path.join(base_dir, w.sample + ".fq.gz")
+        return base_dir.join(base_dir, w.sample + ".fq.gz")
 
 
 # get the final bcf file, name depends on several options
@@ -291,10 +285,12 @@ def get_msa_outputs(ref=reference, groups=groups, labels=get_labels()):
         [outputs.append(f"data/msa/{j}_{i}.afa") for j in labels]
     return outputs
 
+
 def get_group_name(w, groups=groups):
     for key, val in groups.items():
         if w.sample in val:
-            return key 
+            return key
+
 
 # return the group that a sample belongs to
 def get_group_from_sample(w, groups=groups):
@@ -308,7 +304,8 @@ def get_progeny_tsvs(groups=groups):
 
 # get quality cutoff for filtering
 def get_qual_cutoff(groups=groups):
-    return "-i'" + " & ".join(config["filtering"]) + "'"
+    filters = " & ".join(config["filtering"])
+    return "".join(["-i'", filters, "'"])
     # caller = config["caller"]
     # cutoff_level = config["filtering"]["variant_quality_level"]
     # cutoff_val = config["filtering"]["variant_quality_cutoff_values"][caller][
@@ -343,7 +340,10 @@ def get_query_format(w):
 
 def get_reads_to_map(w, r=None):
     sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    f = "data/reads/{sample}_{iden}"
+    if config["illumina"]["lanes_marked"]:
+        f = "data/reads/{sample}_{iden}"
+    else:
+        f = "data/reads/{sample}"
     if sample["read_type"].iloc[0] == "paired":
         basename = [f"{f}_1", f"{f}_2"]
     else:
@@ -358,13 +358,7 @@ def get_reads_to_map(w, r=None):
 # get ref index for bowtie2
 def get_ref_bowtie2(w):
     return multiext(
-        get_ref(w),
-        ".1.bt2",
-        ".2.bt2",
-        ".3.bt2",
-        ".4.bt2",
-        ".rev.1.bt2",
-        ".rev.2.bt2",
+        get_ref(w), ".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.2.bt2"
     )
 
 
@@ -373,8 +367,8 @@ def get_ref_bwa(w):
     return multiext(get_ref(w), ".amb", ".ann", ".bwt", ".pac", ".sa")
 
 
-def get_ref_for_ref_parent(w, fai=False, mask_repeats=mask_repeats):
-    if mask_repeats:
+def get_ref_for_ref_parent(w, fai=False):
+    if config["mask_repeats"]:
         base = f"data/resources/{config['ref_name']}_masked.fa"
     else:
         base = f"data/resources/{config['ref_name']}.fa"
@@ -391,8 +385,8 @@ def get_ref_minimap2(w):
 
 # get ref file to generate freebayes regions
 # no sample or group wildcard in this rule so relying on ref wildcard instead
-def get_ref_to_generate_regions(w, fai=False, mask_repeats=mask_repeats):
-    if mask_repeats:
+def get_ref_to_generate_regions(w, fai=False):
+    if config["mask_repeats"]:
         base = f"data/resources/{w.ref}_masked.fa"
     else:
         base = f"data/resources/{w.ref}.fa"
@@ -402,11 +396,12 @@ def get_ref_to_generate_regions(w, fai=False, mask_repeats=mask_repeats):
 
 
 # get a bed file for the reference being used to call variants for a particular sample
-def get_region_from_sample(w, mask_repeats=mask_repeats):
+def get_region_from_sample(w):
     basename = get_ref(w)
     region_basename = re.sub(r"^(data/resources/)", r"\1regions/", basename)
-    region_basename = re.sub(r"(_masked)?(\.fa)", r"", region_basename)
-    return region_basename + f".{w.label}.region.{w.i}.bed"
+    if config["mask_repeats"]:
+        region_basename = re.sub(r"(_masked)?(\.fa)", r"", region_basename)
+    return "".join([region_basename, ".{label}.region.{i}.bed"])
 
 
 # determines which chroms to use for variant calling

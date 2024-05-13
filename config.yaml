@@ -7,7 +7,6 @@
 output:
   - alignments
   - calls
-  - consensus
   - tsvs
 
 # location of the reference genome on longleaf
@@ -20,7 +19,7 @@ mask_repeats: True # masking repeats is NOT compatible with MSA output
 # /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
 # /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
 data_locations:
-  data: "/work/users/<o>/<n>/<onyen>/data/"
+  data: "/work/users/c/a/cannecar/parentals/"
 
 illumina:
   aligner: "bowtie2" # bwa or bowtie2
@@ -29,7 +28,7 @@ caller: "bcftools" # bcftools or freebayes
 
 # how to filter variants
 filtering:
-  - "QUAL>10"
+  - "QUAL<20"
   # all:
   #   - "QUAL>10" # basic quality filtering
   #   - "FORMAT/DP > 20 & FORMAT/DP < 200" # depth cutoffs
@@ -39,8 +38,9 @@ filtering:
   #   - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
 
 bcftools_opts:
-  call_as_groups: False
-  call_type: "c" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline
+  call_as_groups: True
+  call_type: "m" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline. c can only detect up to two alleles at each locus
+  pileup_options: "--max-depth 200 --min-BQ 15"
 
 freebayes_opts:
   chunks: 100 # you shouldn't need to change this
