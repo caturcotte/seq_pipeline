@@ -8,7 +8,7 @@ cluster:
     --output=logs/{rule}/%j-{rule}-{wildcards}.out
     --time={resources.time}
     --mail-type="FAIL"
-    --mail-user=<YOUR-EMAIL-HERE>
+    --mail-user=cannecar@ad.unc.edu
 default-resources:
   - partition=general
   - time="1:00:00"

@@ -15,6 +15,7 @@ include: "workflow/vcf_filtering.smk"
 localrules:
     all,
     mv_masked_ref,
+    mv_nolane_bams,
     symlink_fqs_single,
     symlink_ref,
     symlink_fqs_paired,

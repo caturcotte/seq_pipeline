@@ -44,6 +44,15 @@ rule symlink_fqs_single:
         "ln -s {input} {output}"
 
 
+# rule symlink_fqs_single:
+#     input:
+#         get_reads,
+#     output:
+#         "data/reads/{sample}_nolane.fq.gz",
+#     shell:
+#         "ln -s {input} {output}"
+
+
 rule symlink_fqs_paired:
     input:
         get_reads,
@@ -51,6 +60,15 @@ rule symlink_fqs_paired:
         ["data/reads/{sample}_{iden}_1.fq.gz", "data/reads/{sample}_{iden}_2.fq.gz"],
     shell:
         "ln -s {input[0]} {output[0]} && ln -s {input[1]} {output[1]}"
+
+
+# rule symlink_fqs_paired:
+#     input:
+#         get_reads,
+#     output:
+#         ["data/reads/{sample}_nolane_1.fq.gz", "data/reads/{sample}_nolane_2.fq.gz"],
+#     shell:
+#         "ln -s {input[0]} {output[0]} && ln -s {input[1]} {output[1]}"
 
 
 rule trim_adapters_paired:

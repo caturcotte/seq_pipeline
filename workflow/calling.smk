@@ -37,7 +37,7 @@ rule bcftools_call:
     output:
         bcf="data/calls/{sample_or_group}_bcftools_unprocessed.bcf",
         txt=temp(".tmp/{sample_or_group}_bcftools.txt"),
-    threads: 16
+    threads: 32
     params:
         call_type=config["bcftools_opts"]["call_type"],
     resources:

@@ -11,10 +11,10 @@ rule fastqc_single:
 
 rule fastqc_paired:
     input:
-        "data/reads/{sample}_{read}.fq.gz",
+        "data/reads/{sample}_{iden}_{read}.fq.gz",
     output:
-        html="data/qc/fastqc/{sample}_{read}.html",
-        zip="data/qc/fastqc/{sample}_{read}_fastqc.zip",
+        html="data/qc/fastqc/{sample}_{iden}_{read}.html",
+        zip="data/qc/fastqc/{sample}_{iden}_{read}_fastqc.zip",
     wrapper:
         "v2.11.1/bio/fastqc"
 
@@ -98,7 +98,7 @@ rule vcf_stats:
     wrapper:
         "v2.13.0/bio/bcftools/stats"
 
-
+idens = [j for i in samples for j in get_ids_for_sample(i)]
 rule multiqc:
     input:
         # expand("data/qc/verify_bam_id/{sample}.selfSM", sample=samples),
@@ -111,7 +111,7 @@ rule multiqc:
         expand("data/qc/sambamba/{sample}.log", sample=samples),
         # expand("data/qc/varianteval/{sample}.varianteval.grp", sample=samples),
         # expand("data/qc/fastq_screen/{sample}.fastq_screen.txt", sample=samples),
-        expand("data/qc/fastqc/{sample}_{read}_fastqc.zip", sample=samples, read=[1, 2]),
+        glob_wildcards("data/qc/fastqc/{sample}_{iden}_{read}_fastqc.zip"),
         expand("data/qc/mosdepth/{sample}.mosdepth.global.dist.txt", sample=samples),
     output:
         "data/qc/multiqc.html",

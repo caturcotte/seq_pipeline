@@ -115,39 +115,52 @@ def get_data_path(sample_name):
         return filepath.joinpath(f"fastq_pass/{location}/", sample_name)
     else:
         raise ValueError(
-            "One or more samples could not be found in the provided data location, but no valid alternate source was listed. The source in sample sheet must be either novogene or nanopore."
-        )
+            "One or more samples could not be found in the provided data location, but no valid alternate source was listed. The source in sample sheet must be either novogene, nanopore or other."
+            )
 
 
 def get_ids_for_sample(sample_name):
     path = get_data_path(sample_name)
-    if is_paired(sample_name):
-        regex = r"(?<=" + sample_name + r"_).*(?=_[12].fq.gz)"
+    if not check_for_lane_id(sample_name):
+        return ["nolane"]
     else:
-        regex = r"(?<=" + sample_name + r"_).*(?=.fq.gz)"
-    p = re.compile(regex)
-    matches = [p.findall(str(i)) for i in path.iterdir()]
-    return [val for lst in matches for val in lst]
+        if is_paired(sample_name):
+            regex = r"(?<=" + sample_name + r"_).*(?=_[12].fq.gz)"
+        else:
+            regex = r"(?<=" + sample_name + r"_).*(?=.fq.gz)"
+        p = re.compile(regex)
+        matches = [p.findall(str(i)) for i in path.iterdir()]
+        return [val for lst in matches for val in lst]
 
 
 def get_alns_to_merge(w):
     return [
-        Path("data/alignments/").joinpath(f"{w.sample}_{i}_sort.bam")
+        str(Path("data/alignments/").joinpath(f"{w.sample}_{i}_sort.bam"))
         for i in get_ids_for_sample(w.sample)
     ]
 
 
+def check_for_lane_id(sample_name):
+    sample = get_sample(sample_name)
+    if sample["lane_ids"].iloc[0]:
+        return True
+    else:
+        return False
+
+
 def get_reads(w):
     path = get_data_path(w.sample)
-    if lanes_marked():
+    sample = get_sample(w.sample)
+    if check_for_lane_id(w.sample):
         prefix = "{sample}_{iden}"
     else:
         prefix = "{sample}"
     if is_paired(w.sample):
         r1 = path.joinpath(f"{prefix}_1.fq.gz")
         r2 = path.joinpath(f"{prefix}_2.fq.gz")
+        return [str(i) for i in [r1, r2]]
     else:
-        return path.joinpath("{sample}_{iden}.fq.gz")
+        return str(path.joinpath(f"{prefix}.fq.gz"))
 
 
 def get_reads_to_trim(w):
@@ -213,10 +226,10 @@ def get_alns_for_pileup(w, bai=False):
 
 # return either bams for all of the samples in the group or individual sample bams
 def get_alns_in_group(w, groups=groups, bai=False):
-    if config["bcftools_opts"]["call_as_groups"] or config["caller"] == "freebayes":
-        return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
-    else:
-        return f"data/alignments/{w.sample}_dedup.bam"
+    # if config["bcftools_opts"]["call_as_groups"] or config["caller"] == "freebayes":
+    return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
+    # else:
+    #     return f"data/alignments/{w.sample}_dedup.bam"
 
 
 # get name of variant caller from config file
@@ -339,19 +352,19 @@ def get_query_format(w):
 
 
 def get_reads_to_map(w, r=None):
-    sample = sample_sheet.loc[sample_sheet["sample"] == w.sample]
-    if config["illumina"]["lanes_marked"]:
+    sample = get_sample(w.sample)
+    if check_for_lane_id(w.sample):
         f = "data/reads/{sample}_{iden}"
     else:
-        f = "data/reads/{sample}"
+        f = "data/reads/{sample}_nolane"
     if sample["read_type"].iloc[0] == "paired":
         basename = [f"{f}_1", f"{f}_2"]
     else:
         basename = [f]
     if sample["trim"].any():
-        final = [i + "_trimmed.fq.gz" for i in basename]
+        final = ["".join([i, "_trimmed.fq.gz"]) for i in basename]
     else:
-        final = [i + ".fq.gz" for i in basename]
+        final = ["".join([i, ".fq.gz"]) for i in basename]
     return final
 
 
@@ -373,25 +386,25 @@ def get_ref_for_ref_parent(w, fai=False):
     else:
         base = f"data/resources/{config['ref_name']}.fa"
     if fai:
-        return base + ".fai"
+        return "".join([base, ".fai"])
     else:
         return base
 
 
 # get ref index for minimap2
 def get_ref_minimap2(w):
-    return get_ref(w) + ".mmi"
+    return "".join([get_ref(w), ".mmi"])
 
 
 # get ref file to generate freebayes regions
 # no sample or group wildcard in this rule so relying on ref wildcard instead
 def get_ref_to_generate_regions(w, fai=False):
     if config["mask_repeats"]:
-        base = f"data/resources/{w.ref}_masked.fa"
+        base = "data/resources/{ref}_masked.fa"
     else:
-        base = f"data/resources/{w.ref}.fa"
+        base = "data/resources/{ref}.fa"
     if fai:
-        base += ".fai"
+        base = "".join([base, ".fai"])
     return base
 
 

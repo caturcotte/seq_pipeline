@@ -4,7 +4,7 @@ rule align_bwa:
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
-        "data/alignments/{sample}_{iden}_bwa.bam",
+        temp("data/alignments/{sample}_{iden}_bwa.bam"),
     resources:
         time="5-0",
     threads: 16
@@ -13,18 +13,19 @@ rule align_bwa:
     shell:
         "bwa mem {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
 
+ruleorder: mv_nolane_bams > merge_bams
 
 rule align_bowtie2:
     input:
         reads=get_reads_to_map,
         ref=get_ref_bowtie2,
     output:
-        "data/alignments/{sample}_{iden}_bt2.bam",
+        temp("data/alignments/{sample}_{iden}_bt2.bam"),
     params:
         ref_basename=get_ref,
     resources:
         time="5-0",
-    threads: 16
+    threads: 32
     conda:
         "envs/bowtie2.yaml"
     shell:
@@ -36,7 +37,7 @@ rule align_minimap2:
         reads=get_reads_to_map,
         ref=get_ref_minimap2,
     output:
-        "data/alignments/{sample}_{iden}_mm2.bam",
+        temp("data/alignments/{sample}_{iden}_mm2.bam"),
     resources:
         time="5-0",
     threads: 16
@@ -68,6 +69,15 @@ rule sort_bams:
         mem_mb=20000,
     shell:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
+
+
+rule mv_nolane_bams:
+    input:
+        "data/alignments/{sample}_nolane_sort.bam",
+    output:
+        "data/alignments/{sample}.bam",
+    shell:
+        "mv {input} {output}"
 
 
 rule merge_bams:
