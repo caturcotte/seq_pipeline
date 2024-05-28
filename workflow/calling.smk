@@ -1,16 +1,20 @@
 rule bcftools_mpileup_single:
     input:
-        alns="data/alignments/{sample}_dedup.bam",
-        idxs="data/alignments/{sample}_dedup.bam.bai",
+        alns="data/alignments/{sample}_markdup.bam",
+        idxs="data/alignments/{sample}_markdup.bam.bai",
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf=temp("data/calls/{sample}_bcftools_single_pileup.bcf"),
+        bcf=pipe("data/calls/{sample}_bcftools_single_pileup.bcf"),
     params:
-        extra=config["bcftools_opts"]["pileup_options"],
-    threads: 16
+        extra=config["calling"]["bcftools_opts"]["pileup_options"],
+        # regions=lambda w: get_regions(w),
+    resources:
+        mem_mb=50000,
+        time="2-0",
+    threads: 32
     shell:
-        "bcftools mpileup -f {input.ref} -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
+        "bcftools mpileup -f {input.ref} -a AD,DP,SP -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
 
 
 rule bcftools_mpileup_group:
@@ -20,30 +24,33 @@ rule bcftools_mpileup_group:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf="data/calls/{group}_bcftools_group_pileup.bcf",
+        bcf=pipe("data/calls/{group}_bcftools_group_pileup.bcf"),
     params:
-        extra=config["bcftools_opts"]["pileup_options"],
+        extra=config["calling"]["bcftools_opts"]["pileup_options"],
+        # regions=get_regions(),
     resources:
         mem_mb=50000,
         time="2-0",
-    threads: 32
+    threads: 128
     shell:
-        "bcftools mpileup -f {input.ref} -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
+        "bcftools mpileup -f {input.ref} -a AD,DP,SP -Ou -o {output.bcf} {params.extra} --threads {threads} {input.alns}"
 
 
 rule bcftools_call:
     input:
         pileup=lambda w: group_or_single(w),
     output:
-        bcf="data/calls/{sample_or_group}_bcftools_unprocessed.bcf",
+        bcf="data/calls/{sample_or_group}_bcftools_raw.bcf",
         txt=temp(".tmp/{sample_or_group}_bcftools.txt"),
-    threads: 32
+    threads: 128
     params:
-        call_type=config["bcftools_opts"]["call_type"],
+        call_type=config["calling"]["bcftools_opts"]["call_type"],
+        # regions=get_regions(),
     resources:
-        time="1-0",
+        mem_mb=50000,
+        time="2-0",
     shell:
-        "bcftools call -{params.call_type}v -o {output.bcf} --threads {threads} {input.pileup} && touch {output.txt}"
+        "bcftools call -{params.call_type}v -f GQ,GP -o {output.bcf} --threads {threads} {input.pileup} && touch {output.txt}"
 
 
 rule freebayes:
@@ -76,22 +83,29 @@ rule concat_freebayes:
             label=get_labels(),
         ),
     output:
-        bcf="data/calls/{group}_freebayes_unprocessed.bcf",
+        bcf="data/calls/{group}_freebayes_raw.bcf",
         txt=temp(".tmp/group_call_{group}_freebayes.txt"),
     threads: 4
     shell:
         "bcftools concat -a -D {input.calls} -o {output.bcf} && touch {output.txt}"
 
 
-rule separate_into_samples:
+rule overlap_bcftools_and_freebayes:
     input:
-        get_group_from_sample,
+        fb="data/calls/{group}_freebayes_raw.bcf",
+        fb_idx="data/calls/{group}_freebayes_raw.bcf.csi",
+        bt="data/calls/{group}_bcftools_raw.bcf",
+        bt_idx="data/calls/{group}_bcftools_raw.bcf.csi",
     output:
-        bcfs="data/calls/{sample}_{caller}_unprocessed.bcf",
-    resources:
-        time="2:00:00",
+        temp(expand("data/calls/bt_fb_overlap_{{group}}/000{i}.vcf", i=[str(i) for i in range(4)])),
     shell:
-        "bcftools view -s {wildcards.sample} -a -o {output.bcfs} {input}"
+        "bcftools isec -n 2 -p bt_fb_overlap_{wildcards.group} {input.fb} {input.bt}"
 
-
-ruleorder: bcftools_call > separate_into_samples
+rule annotate_freebayes_with_bcftools:
+    input:
+        fb="data/calls/bt_fb_overlap_{group}/0000.vcf",
+        bt="data/calls/{group}_bcftools_raw.bcf",
+    output:
+        "data/calls/{group}_both_raw.bcf",
+    shell:
+        "bcftools annotate -a {input.bt} -c 'CHROM,POS,REF,ALT,=INFO,=FORMAT' -l unique -Ob -o {output} {input.fb}"

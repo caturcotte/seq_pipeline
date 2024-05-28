@@ -4,23 +4,25 @@ rule align_bwa:
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
-        temp("data/alignments/{sample}_{iden}_bwa.bam"),
+        pipe("data/alignments/{sample}_{iden}_bwa.sam"),
     resources:
         time="5-0",
     threads: 16
     conda:
         "envs/bwa.yaml"
     shell:
-        "bwa mem {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
+        "bwa mem {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -o {output}"
+
 
 ruleorder: mv_nolane_bams > merge_bams
+
 
 rule align_bowtie2:
     input:
         reads=get_reads_to_map,
         ref=get_ref_bowtie2,
     output:
-        temp("data/alignments/{sample}_{iden}_bt2.bam"),
+        pipe("data/alignments/{sample}_{iden}_bt2.sam"),
     params:
         ref_basename=get_ref,
     resources:
@@ -29,7 +31,7 @@ rule align_bowtie2:
     conda:
         "envs/bowtie2.yaml"
     shell:
-        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id {wildcards.iden} --rg 'SM:{wildcards.sample}' | samtools view -1 -o {output}"
+        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id {wildcards.iden} --rg 'SM:{wildcards.sample}' -o {output}"
 
 
 rule align_minimap2:
@@ -37,23 +39,34 @@ rule align_minimap2:
         reads=get_reads_to_map,
         ref=get_ref_minimap2,
     output:
-        temp("data/alignments/{sample}_{iden}_mm2.bam"),
+        pipe("data/alignments/{sample}_{iden}_mm2.sam"),
     resources:
         time="5-0",
     threads: 16
     conda:
         "envs/minimap2.yaml"
     shell:
-        "minimap2 -ax map-ont {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} | samtools view -1 -o {output}"
+        "minimap2 -ax map-ont {input.ref} {input.reads} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' --threads {threads} > {output}"
+
+
+rule sam2bam:
+    input:
+        "data/alignments/{sample}_{iden}_{aligner}.sam",
+    output:
+        pipe("data/alignments/{sample}_{iden}_{aligner}.bam"),
+    resources:
+        time="5-0",
+    shell:
+        "samtools view -1 -o {output} {input}"
 
 
 rule fix_mate_pairs:
     input:
         get_aligned_reads,
     output:
-        temp("data/alignments/{sample}_{iden}.bam"),
+        pipe("data/alignments/{sample}_{iden}.bam"),
     resources:
-        time="2:00:00",
+        time="5-0",
     shell:
         "samtools fixmate -m -O bam,level=1 {input} {output}"
 
@@ -90,26 +103,26 @@ rule merge_bams:
         "sambamba merge -t {threads} {output} {input}"
 
 
-rule remove_duplicates:
+rule mark_duplicates:
     input:
         bam="data/alignments/{sample}.bam",
         ref=get_ref,
     output:
-        bam="data/alignments/{sample}_dedup.bam",
+        bam="data/alignments/{sample}_markdup.bam",
     threads: 4
     resources:
         time="1-0",
     log:
         "data/qc/sambamba/{sample}.log",
     shell:
-        "sambamba markdup -r -t {threads} {input.bam} {output.bam} > {log} 2>&1"
+        "sambamba markdup -t {threads} {input.bam} {output.bam} > {log} 2>&1"
 
 
 rule index_bams:
     input:
-        "data/alignments/{sample}_dedup.bam",
+        "data/alignments/{sample}_markdup.bam",
     output:
-        "data/alignments/{sample}_dedup.bam.bai",
+        "data/alignments/{sample}_markdup.bam.bai",
     resources:
         time="2:00:00",
     shell:

@@ -16,7 +16,7 @@ samples_and_ref = list(reference) + samples
 
 # for nanopore data, aligner must be minimap2
 sample_sheet["aligner"] = np.where(
-    sample_sheet["platform"] == "nanopore", "minimap2", config["illumina"]["aligner"]
+    sample_sheet["platform"] == "nanopore", "minimap2", config["alignment"]["aligner"]
 )
 
 sample_sheet["trim"] = np.where(
@@ -28,7 +28,7 @@ sample_sheet["trim"] = np.where(
     True,
 )
 
-chunks = list(range(1, config["freebayes_opts"]["chunks"] + 1))
+chunks = list(range(1, config["calling"]["freebayes_opts"]["chunks"] + 1))
 
 if config["mask_repeats"] and "msa" in config["output"]:
     raise ValueError(
@@ -44,10 +44,20 @@ try:
         for i in list(group_set)
     }
 except:
-    if config["call_as_groups"]:
-        raise ValueError(
-            "call_as_groups option is enabled in config.yaml, but no groups are defined in the sample sheet."
-        )
+    # if config["call_as_groups"]:
+    raise ValueError(
+        " in the sample sheet."
+    )
+
+
+all_suffix_options = ["snps_", "biallelic_", "homozygous_", "flt_"]
+suffix_constraints = []
+for i in range(1, len(all_suffix_options)+1):
+    suffix_constraints_i = combinations(all_suffix_options, i)
+    suffix_constraints.append(suffix_constraints_i)
+suffix_constraints = list(chain.from_iterable(suffix_constraints))
+suffix_constraints = ["".join(list(i)) for i in suffix_constraints]
+suffix_constraints = [i.rstrip("_") for i in list(suffix_constraints)]
 
 
 def is_paired(sample_name):
@@ -116,7 +126,7 @@ def get_data_path(sample_name):
     else:
         raise ValueError(
             "One or more samples could not be found in the provided data location, but no valid alternate source was listed. The source in sample sheet must be either novogene, nanopore or other."
-            )
+        )
 
 
 def get_ids_for_sample(sample_name):
@@ -218,18 +228,25 @@ def get_aligned_reads(w):
 
 
 def get_alns_for_pileup(w, bai=False):
-    if config["caller"] == "freebayes" or config["bcftools_opts"]["call_as_groups"]:
-        return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
-    else:
-        return f"data/alignments/{w.sample_or_group}_dedup.bam"
+      return [f"data/alignments/{i}_markdup.bam" for i in groups[w.group]]
 
 
 # return either bams for all of the samples in the group or individual sample bams
 def get_alns_in_group(w, groups=groups, bai=False):
     # if config["bcftools_opts"]["call_as_groups"] or config["caller"] == "freebayes":
-    return [f"data/alignments/{i}_dedup.bam" for i in groups[w.group]]
+    return [f"data/alignments/{i}_markdup.bam" for i in groups[w.group]]
     # else:
     #     return f"data/alignments/{w.sample}_dedup.bam"
+
+
+def get_regions():
+    if (
+        "chromosomes" in config["calling"].keys()
+        or "regions" in config["calling"].keys()
+    ):
+        return "-R data/resources/call_regions.bed"
+    else:
+        return ""
 
 
 # get name of variant caller from config file
@@ -238,10 +255,10 @@ def get_caller(w):
 
 
 def group_or_single(w):
-    if config["bcftools_opts"]["call_as_groups"]:
-        return "data/calls/{sample_or_group}_bcftools_group_pileup.bcf"
-    else:
-        return "data/calls/{sample_or_group}_bcftools_single_pileup.bcf"
+    # if config["calling"]["bcftools_opts"]["call_as_groups"]:
+    return "data/calls/{sample_or_group}_bcftools_group_pileup.bcf"
+    # else:
+    #     return "data/calls/{sample_or_group}_bcftools_single_pileup.bcf"
 
 
 # locate reads based on the location(s) listed in the sample sheet
@@ -254,32 +271,91 @@ def get_file_locations(w, read=None):
         return base_dir.join(base_dir, w.sample + ".fq.gz")
 
 
-# get the final bcf file, name depends on several options
-def get_final_bcf(w, s=None, csi=False):
-    if s == None:
-        s = w.sample
-    if not csi:
-        return f"data/calls/{s}_norm_qflt.bcf"
-    else:
-        return f"data/calls/{s}_norm_qflt.bcf.csi"
+def get_filtering_criteria(w):
+    all_options = {
+        "min_depth": "FORMAT/DP < ",
+        "min_gq": "FORMAT/GQ < ",
+        "min_qd": "INFO/QD < ",
+    }
+    flt_strs = []
+    for key, val in config["filtering"]["all"].items():
+        if key in all_options:
+            flt_str = "".join(all_options[key], val)
+            flt_strs.append(flt_str)
+    for key, val in config["filtering"][w.sample_or_group].items():
+        if key in all_options:
+            flt_str = "".join(all_options[key], val)
+            flt_strs.append(flt_str)
+    return " & ".join(flt_strs)
 
+
+def get_bcf_suffix(sample_or_group, caller=config['calling']['caller']):
+    all_options = {
+        "snps_only": "snps",
+        "biallelic_only": "biallelic",
+        "homozygous_only": "homozygous",
+        "min_depth": "flt",
+        "min_gq": "flt",
+        "min_qd": "flt",
+        "raw_options": "flt",
+    }
+    suffixes = []
+    for opt in all_options:
+        if opt in config["filtering"]["all"]:
+            if config["filtering"]["all"][opt]:
+                suffixes.append(all_options[opt])
+        if sample_or_group in config["filtering"]:
+            if opt in config["filtering"][sample_or_group]:
+                if config["filtering"][sample_or_group][opt]:
+                    suffixes.append(all_options[opt])
+
+    # remove duplicate values but keep ordered
+    suffixes = list(set(suffixes))
+    suffix_str = "_".join(suffixes)
+    return suffix_str
+
+
+# get the final bcf file, name depends on several options
+def get_final_bcf(sample_or_group, csi=False):
+    suffix_str = get_bcf_suffix(sample_or_group)
+    if not csi:
+        return "".join(["data/calls/{group}_", suffix_str, ".bcf"])
+    else:
+        return "".join(["data/calls/{group}_", suffix_str, ".bcf.csi"])
+
+def get_call_file(w, addon=None, csi=False):
+    calls = "".join(["data/calls/{group}_", f"{config['calling']['caller']}_", "{suffix}.bcf"])
+    if csi:
+        calls = "".join([calls, ".csi"])
+    return calls
+
+def get_bcf_wildcard(w, csi=False):
+    return get_final_bcf(w.group, csi)
 
 # get final output for rule all
-def get_final_output(w):
+def get_final_output(w, samples=samples, groups=groups):
     out = []
+    samples_or_groups = []
+    # for i in config["analysis"]["comparisons"]:
+    #     for j in config["analysis"]["comparisons"][i]["datasets"]:
+    #         samples_or_groups.append(j)
+    for i in config["filtering"]:
+        if i != "all":
+           samples_or_groups.append(i) 
+    samples_and_groups = list(set(list(groups.keys()) + samples_or_groups))
     if "alignments" in config["output"]:
         [
             out.append(i)
-            for i in expand("data/alignments/{sample}_dedup.bam.bai", sample=samples)
+            for i in expand("data/alignments/{sample}_markdup.bam.bai", sample=samples)
         ]
     if "calls" in config["output"]:
-        [out.append(get_final_bcf(w, s=i, csi=True)) for i in samples]
+        [out.append(get_final_bcf(i, csi=True)) for i in samples_and_groups]
     if "consensus" in config["output"]:
         [out.append(i) for i in expand("data/consensus/{sample}.fa", sample=samples)]
     if "msa" in config["output"]:
         [out.append(i) for i in get_msa_outputs()]
     if "tsvs" in config["output"]:
-        out.append("data/tsvs/merged.tsv")
+        [out.append(i) for i in expand("data/tsvs/{group}.tsv", group=groups.keys())]
     out.append("data/qc/multiqc.html")
     return out
 
@@ -307,7 +383,11 @@ def get_group_name(w, groups=groups):
 
 # return the group that a sample belongs to
 def get_group_from_sample(w, groups=groups):
-    return f"data/calls/{get_group_name(w)}_{w.caller}_unprocessed.bcf"
+    return get_final_bcf(get_group_name(w))
+    # if config["filtering"]["snps_only"]:
+    #     return f"data/calls/{get_group_name(w)}_{w.caller}_snps.bcf"
+    # else:
+    #     return f"data/calls/{get_group_name(w)}_{w.caller}.bcf"
 
 
 # for ndj analysis, to merge progeny tsvs together
@@ -331,6 +411,33 @@ def get_qual_cutoff(groups=groups):
     #     n_samples = len(groups[group])
     #     cutoff_val = cutoff_val * n_samples
     # return cutoff_val
+
+
+def get_comparisons(w, basename=False, csi=False):
+    comp = config["analysis"]["comparisons"][{w.comparison}]
+    if basename:
+        return comp
+    comp_files = []
+    for i in comp:
+        suffix = get_suffix_str(i)
+        comp_file = "".join(["data/calls/", i, suffix, ".bcf"])
+        comp_files.append(comp_file)
+    if not csi:
+        return comp_files
+    return ["".join([i, ".csi"]) for i in comp_files]
+
+def get_suffix_for_comparison(w):
+    return get_suffix_str(w.f1)
+
+def get_final_bams(w, bai=False):
+    sample = get_sample(w.sample)
+    file = ["data/alignments/{sample}"]
+    if sample["PCR"]:
+        file.append("_markdup")
+    file.append(".bam")
+    if bai:
+        file.append(".bai")
+    return "".join(file)
 
 
 # get the format for transforming vcfs into tsvs
@@ -417,12 +524,29 @@ def get_region_from_sample(w):
     return "".join([region_basename, ".{label}.region.{i}.bed"])
 
 
-# determines which chroms to use for variant calling
-def get_regions_to_call(w):
-    return ",".join(config["chroms"])
+# def get_ref_freebayes(fai=False):
+#     if config["calling"]["chromosomes"] or config["calling"]["regions"]:
+#         if not fai:
+#             return "data/resources/call_regions.fa"
+#         else:
+#             return "data/resources/call_regions.fa.fai"
 
 
 # get all of the tsv files to merge into one
-def get_tsvs_to_merge(samples=samples):
-    tsvs = [i for i in samples]
-    return expand("data/tsvs/{sample}.tsv", sample=tsvs)
+# def get_tsvs_to_merge(samples=samples):
+#     tsvs = [i for i in samples]
+#     return expand("data/tsvs/{sample}.tsv", sample=tsvs)
+
+
+def get_tsvs_to_merge(w):
+    comparisons = {}
+    for key, val in config["comparisons"]:
+        if val["comparison"] == "unique":
+            comparisons[key] == f"{val['datasets'][0]}_not_in_{val['datasets'][1]}"
+        elif val["comparison"] == "common":
+            comparisons[key] == f"{val['datasets'][0]}_in_{val['datasets'][1]}"
+    return expand(
+        "data/tsvs/{comparison}_{condition}.tsv",
+        comparison=comparisons.keys(),
+        condition=comparisons.values(),
+    )

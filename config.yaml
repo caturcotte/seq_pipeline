@@ -13,7 +13,6 @@ output:
 ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 mask_repeats: True # masking repeats is NOT compatible with MSA output
-
 # file locations to use in the sample sheet.
 # If location is set to data for paired sample A, snakemake will look for the files:
 # /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
@@ -21,26 +20,60 @@ mask_repeats: True # masking repeats is NOT compatible with MSA output
 data_locations:
   data: "/work/users/c/a/cannecar/parentals/"
 
-illumina:
+alignment:
   aligner: "bowtie2" # bwa or bowtie2
 
-caller: "bcftools" # bcftools or freebayes
+calling:
+  # bcftools, freebayes or both
+  caller: "both"
+  # chromosomes
+  #   - chr2L
+  #   - chr2R
+  # regions
+  #   - chr3L:452389-1458939
 
-# how to filter variants
+  # choosing both will only use variants called by both bcftools and freebayes
+  bcftools_opts:
+    call_type: "m" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline. c can only detect up to two alleles at each locus
+    pileup_options: "--max-depth 300 --min-BQ 15"
+  freebayes_opts:
+    chunks: 100 # you shouldn't need to change this
+
+# how to filter variants, organized by group
 filtering:
-  - "QUAL<20"
-  # all:
-  #   - "QUAL>10" # basic quality filtering
-  #   - "FORMAT/DP > 20 & FORMAT/DP < 200" # depth cutoffs
-  # bcftools:
-  # freebayes:
-  #   - "QUAL / FORMAT/AO > 10" # scale quality by depth
-  #   - "SAF > 0 & SAR > 0" # there must be forward and reverse reads supporting the variant
+  all:
+    snps_only: True
+    biallelic_only: True
+    min_depth: 30
+    # max_depth: 300
+    # min_qd: 2
+    min_gq: 20
+    # raw_options:
+  parents:
+    homozygous_only: True
+  # w1118:
+  #   homozygous_only: True
+  # Oregon_RM:
+  #   homozygous_only: True
 
-bcftools_opts:
-  call_as_groups: True
-  call_type: "m" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline. c can only detect up to two alleles at each locus
-  pileup_options: "--max-depth 200 --min-BQ 15"
+# analysis:
+  # get common and unique SNPs between two datasets (either samples or groups)
+  # datasets generated from comparisons can be used for additional comparisons
+  # compare_variants: True
+  # comparisons:
+  #   from_w1118:
+  #     comparison: common
+  #     datasets:
+  #       - w1118
+  #       - progeny
+  #   from_oregonr:
+  #     comparison: common
+  #     datasets:
+  #       - Oregon_RM
+  #       - progeny
+  #   unique_snps:
+  #     comparison: unique
+  #     datasets:
+  #       - from_w1118
+  #       - from_oregonr
 
-freebayes_opts:
-  chunks: 100 # you shouldn't need to change this

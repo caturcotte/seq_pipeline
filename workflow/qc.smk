@@ -98,14 +98,17 @@ rule vcf_stats:
     wrapper:
         "v2.13.0/bio/bcftools/stats"
 
+
 idens = [j for i in samples for j in get_ids_for_sample(i)]
+
+
 rule multiqc:
     input:
         # expand("data/qc/verify_bam_id/{sample}.selfSM", sample=samples),
         expand(
             "data/qc/bcftools/{sample}_{caller}.stats.txt",
             sample=samples,
-            caller=config["caller"],
+            caller=config["calling"]["caller"],
         ),
         glob_wildcards("data/qc/cutadapt/{sample}_{prefix}.txt"),
         expand("data/qc/sambamba/{sample}.log", sample=samples),
