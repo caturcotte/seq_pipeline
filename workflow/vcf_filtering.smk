@@ -2,7 +2,7 @@ rule select_biallelic:
     input:
         "".join(["data/calls/{group}_", f"{config['calling']['caller']}_raw.bcf"]),
     output:
-        "data/calls/{group}_{caller}_{suffix}_biallelic.bcf",
+        "data/calls/{group}_{caller}_biallelic.bcf",
     threads: 4
     shell:
         "bcftools view -m2 -M2 -Ob -o {output} {input}"

@@ -50,7 +50,7 @@ except:
     )
 
 
-all_suffix_options = ["snps_", "biallelic_", "homozygous_", "flt_"]
+all_suffix_options = ["biallelic_", "snps_", "homozygous_", "flt_"]
 suffix_constraints = []
 for i in range(1, len(all_suffix_options)+1):
     suffix_constraints_i = combinations(all_suffix_options, i)
@@ -280,19 +280,24 @@ def get_filtering_criteria(w):
     flt_strs = []
     for key, val in config["filtering"]["all"].items():
         if key in all_options:
-            flt_str = "".join(all_options[key], val)
+            flt_str = "".join([all_options[key], str(val)])
             flt_strs.append(flt_str)
-    for key, val in config["filtering"][w.sample_or_group].items():
-        if key in all_options:
-            flt_str = "".join(all_options[key], val)
-            flt_strs.append(flt_str)
+    if w.group in config["filtering"]:
+        for key, val in config["filtering"][w.group].items():
+            if key in all_options:
+                flt_str = "".join([all_options[key], str(val)])
+                flt_strs.append(flt_str)
     return " & ".join(flt_strs)
 
 
-def get_bcf_suffix(sample_or_group, caller=config['calling']['caller']):
+def get_bcf_suffix(
+    sample_or_group,
+    caller=config['calling']['caller'],
+    suffix_list=all_suffix_options,
+):
     all_options = {
-        "snps_only": "snps",
         "biallelic_only": "biallelic",
+        "snps_only": "snps",
         "homozygous_only": "homozygous",
         "min_depth": "flt",
         "min_gq": "flt",
@@ -300,6 +305,8 @@ def get_bcf_suffix(sample_or_group, caller=config['calling']['caller']):
         "raw_options": "flt",
     }
     suffixes = []
+    suffix_list = [i.rstrip("_") for i in suffix_list]
+    print(suffix_list)
     for opt in all_options:
         if opt in config["filtering"]["all"]:
             if config["filtering"]["all"][opt]:
@@ -310,18 +317,18 @@ def get_bcf_suffix(sample_or_group, caller=config['calling']['caller']):
                     suffixes.append(all_options[opt])
 
     # remove duplicate values but keep ordered
-    suffixes = list(set(suffixes))
+    suffixes = sorted(list(set(suffixes)), key=lambda x: suffix_list.index(x))
     suffix_str = "_".join(suffixes)
     return suffix_str
 
 
 # get the final bcf file, name depends on several options
-def get_final_bcf(sample_or_group, csi=False):
+def get_final_bcf(sample_or_group, csi=False, caller=config['calling']['caller']):
     suffix_str = get_bcf_suffix(sample_or_group)
     if not csi:
-        return "".join(["data/calls/{group}_", suffix_str, ".bcf"])
+        return f"data/calls/{sample_or_group}_{caller}_{suffix_str}.bcf"
     else:
-        return "".join(["data/calls/{group}_", suffix_str, ".bcf.csi"])
+        return f"data/calls/{sample_or_group}_{caller}_{suffix_str}.bcf.csi"
 
 def get_call_file(w, addon=None, csi=False):
     calls = "".join(["data/calls/{group}_", f"{config['calling']['caller']}_", "{suffix}.bcf"])
@@ -441,9 +448,9 @@ def get_final_bams(w, bai=False):
 
 
 # get the format for transforming vcfs into tsvs
-def get_query_format(w):
+def get_query_format(w, caller=config['calling']['caller']):
     cols = ["%SAMPLE", "%CHROM", "%POS", "%REF", "%ALT", "%QUAL", "%FILTER", "%GT"]
-    if config["caller"] == "freebayes":
+    if caller in ["freebayes", "both"]:
         add_cols = [
             "%DP",
             "%AF",
@@ -451,7 +458,7 @@ def get_query_format(w):
             "%RO",
             "%TYPE",
         ]
-    elif config["caller"] == "bcftools":
+    elif caller in ["bcftools", "both"]:
         add_cols = ["%DP", "%PL", "%DP4{0}", "%DP4{1}", "%DP4{2}", "%DP4{3}"]
     [cols.append(i) for i in add_cols]
     query = "\t".join(cols)

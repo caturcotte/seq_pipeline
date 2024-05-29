@@ -5,7 +5,7 @@ rule bcftools_mpileup_single:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf=pipe("data/calls/{sample}_bcftools_single_pileup.bcf"),
+        bcf=temp("data/calls/{sample}_bcftools_single_pileup.bcf"),
     params:
         extra=config["calling"]["bcftools_opts"]["pileup_options"],
         # regions=lambda w: get_regions(w),
@@ -24,7 +24,7 @@ rule bcftools_mpileup_group:
         ref=get_ref,
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
-        bcf=pipe("data/calls/{group}_bcftools_group_pileup.bcf"),
+        bcf=temp("data/calls/{group}_bcftools_group_pileup.bcf"),
     params:
         extra=config["calling"]["bcftools_opts"]["pileup_options"],
         # regions=get_regions(),
@@ -62,7 +62,6 @@ rule freebayes:
         ref_idx=lambda w: get_ref(w, fai=True),
     output:
         bcf=temp("data/calls/{group}_{label}_freebayes_{i}.bcf"),
-    threads: 1
     resources:
         time="2-0",
         mem_mb="1000",

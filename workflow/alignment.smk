@@ -4,7 +4,7 @@ rule align_bwa:
         ref=get_ref,
         ref_bwa_idx=get_ref_bwa,
     output:
-        pipe("data/alignments/{sample}_{iden}_bwa.sam"),
+        temp("data/alignments/{sample}_{iden}_bwa.sam"),
     resources:
         time="5-0",
     threads: 16
@@ -22,12 +22,12 @@ rule align_bowtie2:
         reads=get_reads_to_map,
         ref=get_ref_bowtie2,
     output:
-        pipe("data/alignments/{sample}_{iden}_bt2.sam"),
+        temp("data/alignments/{sample}_{iden}_bt2.sam"),
     params:
         ref_basename=get_ref,
     resources:
         time="5-0",
-    threads: 32
+    threads: 64
     conda:
         "envs/bowtie2.yaml"
     shell:
@@ -39,7 +39,7 @@ rule align_minimap2:
         reads=get_reads_to_map,
         ref=get_ref_minimap2,
     output:
-        pipe("data/alignments/{sample}_{iden}_mm2.sam"),
+        temp("data/alignments/{sample}_{iden}_mm2.sam"),
     resources:
         time="5-0",
     threads: 16
@@ -53,9 +53,7 @@ rule sam2bam:
     input:
         "data/alignments/{sample}_{iden}_{aligner}.sam",
     output:
-        pipe("data/alignments/{sample}_{iden}_{aligner}.bam"),
-    resources:
-        time="5-0",
+        temp("data/alignments/{sample}_{iden}_{aligner}.bam"),
     shell:
         "samtools view -1 -o {output} {input}"
 
@@ -64,9 +62,7 @@ rule fix_mate_pairs:
     input:
         get_aligned_reads,
     output:
-        pipe("data/alignments/{sample}_{iden}.bam"),
-    resources:
-        time="5-0",
+        temp("data/alignments/{sample}_{iden}.bam"),
     shell:
         "samtools fixmate -m -O bam,level=1 {input} {output}"
 
@@ -78,7 +74,6 @@ rule sort_bams:
         temp("data/alignments/{sample}_{iden}_sort.bam"),
     threads: 8
     resources:
-        time="2:00:00",
         mem_mb=20000,
     shell:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
