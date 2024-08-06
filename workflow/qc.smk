@@ -89,10 +89,10 @@ rule mosdepth:
 
 rule vcf_stats:
     input:
-        calls=get_caller,
+        calls="data/calls/{sample}_raw.bcf"
         # ref=get_ref,
     output:
-        "data/qc/bcftools/{sample}_{caller}.stats.txt",
+        "data/qc/bcftools/{sample}.stats.txt",
     # conda:
     #     "envs/bcftools.yaml"
     wrapper:

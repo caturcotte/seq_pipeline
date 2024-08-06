@@ -1,148 +1,77 @@
-rule select_biallelic:
-    input:
-        "".join(["data/calls/{group}_", f"{config['calling']['caller']}_raw.bcf"]),
-    output:
-        "data/calls/{group}_{caller}_biallelic.bcf",
-    threads: 4
-    shell:
-        "bcftools view -m2 -M2 -Ob -o {output} {input}"
-
-
+# for some reason you can't just select for snps and the reference so instead you just have to exclude everything else
+# this weirdly doesn't get rid of all indels so I remove them when rearranging the parquets
 rule select_snps:
     input:
-        get_call_file,
+        bcf="data/calls/{sample}_raw.bcf",
+        csi="data/calls/{sample}_raw.bcf.csi",
     output:
-        "data/calls/{group}_{caller}_{suffix}_snps.bcf",
-        # "".join(["{input.calls}".strip(".bcf"), "_snps.bcf"]),
+        "data/calls/{sample}.bcf",
     threads: 4
+    envmodules:
+        config['envmodules']['samtools']
     shell:
-        "bcftools view -v snps -Ob -o {output} {input}"
+        "bcftools view -V mnps,bnd,indels,other -Ob -o {output} {input.bcf}"
 
-
-# rule bcftools_norm:
-#     input:
-#         calls=get_call_file,
-#         ref=get_ref,
-#     output:
-#         "data/calls/{group}_{caller}_{suffix}_norm.bcf",
-#     resources:
-#         time="2:00:00",
-#     shell:
-#         "bcftools norm -f {input.ref} -m '-' -Ob -o {output} {input.calls}"
-
-
-rule filter_low_quality:
-    input:
-        calls=get_call_file,
-        csi=lambda w: get_call_file(w, csi=True),
-    output:
-        "data/calls/{group}_{caller}_{suffix}_flt.bcf",
-        # "".join(["{input.calls}".strip(".bcf"), "_flt.bcf"]),
-    params:
-        qual_cutoff=lambda w: get_filtering_criteria(w),
-    shell:
-        "bcftools filter -i {params.qual_cutoff} -s LowQual -g 5 -Ob -o {output} {input.calls}"
-
-
-rule filter_homozygous:
-    input:
-        calls=get_call_file,
-        csi=lambda w: get_call_file(w, csi=True),
-    output:
-        "data/calls/{group}_{caller}_{suffix}_homozygous.bcf",
-        # "".join(["{input.calls}".strip(".bcf"), "_homozygous.bcf"]),
-    shell:
-        "bcftools filter -i 'GT=\"1/1\"' -Ob -o {output} {input.calls}"
-
-
-# rule format_bcf:
-#     input:
-#         # bcf=get_final_bcf,
-#         # csi=lambda w: get_final_bcf(w, csi=True),
-#         bcf="data/calls/{comparison}/{condition}.vcf.gz",
-#         csi="data/calls/{comparison}/{condition}.vcf.gz.csi",
-#     output:
-#         # "data/tsvs/{sample}.tsv",
-#         "data/tsvs/{comparison}_{condition}.tsv",
-#     params:
-#         format=get_query_format,
-#     shell:
-#         "bcftools query -f '{params.format}' -o {output} {input.bcf}"
 
 rule format_bcf:
     input:
-        bcf=get_bcf_wildcard,
-        csi=lambda w: get_bcf_wildcard(w, csi=True),
-        # bcf="data/calls/{comparison}/{condition}.vcf.gz",
-        # csi="data/calls/{comparison}/{condition}.vcf.gz.csi",
+        bcf="data/calls/{sample}.bcf",
+        csi="data/calls/{sample}.bcf.csi",
     output:
-        "data/tsvs/{group}.tsv",
-        # "data/tsvs/{comparison}_{condition}.tsv",
+        temp("data/tsvs/{sample}_tmp.tsv"),
     params:
         format=get_query_format,
+    envmodules:
+        config['envmodules']['samtools']
     shell:
         "bcftools query -f '{params.format}' -o {output} {input.bcf}"
 
-# rule separate_into_samples:
-#     input:
-#         get_group_from_sample,
-#     output:
-#         "data/calls/{sample}_{suffix}.bcf",
-#     resources:
-#         time="2:00:00",
-#     shell:
-#         "bcftools view -s {wildcards.sample} -a -o {output.bcfs} {input}"
 
-
-# rule compare_snps:
-#     input:
-#         bcf_list=get_comparisons,
-#         bcf_idxs=lambda w: get_comparisons(w, csi=True),
-#     output:
-#         expand(
-#             "data/calls/comparisons/{{comparison}}/{{f1}}_{condition}_{{f2}}.bcf",
-#             condition=["not_in", "in"],
-#             ),
-#         expand(
-#             "data/calls/comparisons/{{comparison}}/{{f2}}_{condition}_{{f1}}.bcf",
-#             condition=["not_in", "in"],
-#             )
-#     params:
-#         basenames=lambda w: get_comparisons(w, basename=True),
-#     shell:
-#         "scripts/compare_snps.sh {input.bcf_list} {wildcards.comparison} {params.basenames}"
-
-# rule append_suffixes_to_comparisons:
-#     input:
-#         "data/calls/comparisons/{comparison}/{f1}_{condition}_{f2}.bcf",
-#     output:
-#         "data/calls/comparisons/{comparison}/{f1}_{condition}_{f2}_{suffix}.bcf",
-#     params:
-#         sfix=lambda w: get_suffix_for_comparison(w)
-#     shell:
-#         "mv {input} {input}_{params.sfix}.bcf"
-
-# ruleorder: bcftools_call > separate_into_samples
-# ruleorder: separate_into_samples > append_suffixes_to_comparisons
-# ruleorder: append_suffixes_to_comparisons > select_biallelic
-
-
-rule make_consensus_genome:
+rule add_header_to_tsv:
     input:
-        bcf=lambda w: get_final_bcf(w.sample),
-        bcf_idx=lambda w: get_final_bcf(w.sample, csi=True),
-        ref=get_ref,
-        ref_idx=lambda w: get_ref(w, fai=True),
+        "data/tsvs/{sample}_tmp.tsv",
     output:
-        "data/consensus/{sample}.fa",
+        "data/tsvs/{sample}.tsv",
+    params:
+        sedex="\'1s/^/sample\\tchromosome\\tposition\\treference\\tvariant\\tquality\\tgenotype\\tdepth\\tallele_depth\\n/\'"
     shell:
-        "bcftools consensus -f {input.ref} {input.bcf} -o {output}"
+        "sed {params.sedex} {input} > {output}"
 
 
-rule merge_tsvs:
+rule convert_tsv_to_parquet:
     input:
-        get_tsvs_to_merge,
+        "data/tsvs/{sample}.tsv",
     output:
-        "data/tsvs/merged.tsv",
-    shell:
-        "cat {input} > {output}"
+        "data/parquets/{sample}.parquet",
+    conda:
+        "envs/convert_tsv_to_parquet.yaml"
+    resources:
+        mem_mb=50000,
+    script:
+        "scripts/convert_tsv_to_parquet.py"
+
+# rearrange the tables so that the reference is ref_parent
+rule rearrange_parquet:
+    input:
+        ref=f"data/parquets/{config['ref_parent']}.parquet",
+        alt=f"data/parquets/{config['alt_parent']}.parquet",
+        prog=expand("data/parquets/{sample}.parquet", sample=progeny),
+    output:
+        ref="data/parquets/reference.parquet",
+        prog="data/parquets/samples.parquet",
+    conda:
+        "envs/rearrange_parquet.yaml"
+    notebook:
+        "scripts/rearrange_parquet.py.ipynb"
+
+
+rule run_tiger:
+    input:
+        "data/parquets/reference.parquet",
+        "data/parquets/samples.parquet",
+    output:
+        "data/tiger/tiger_output.parquet",
+    conda:
+        "envs/run_tiger.yaml"
+    script:
+        "scripts/run_tiger.py"

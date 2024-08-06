@@ -1,24 +1,43 @@
-cluster:
-  mkdir -p logs/{rule} &&
-  sbatch
-    --partition={resources.partition}
-    --cpus-per-task={threads}
-    --mem={resources.mem_mb}
-    --job-name=smk-{rule}-{wildcards}
-    --output=logs/{rule}/%j-{rule}-{wildcards}.out
-    --time={resources.time}
-    --mail-type="FAIL"
-    --mail-user=cannecar@ad.unc.edu
-default-resources:
-  - partition=general
-  - time="1:00:00"
-restart-times: 0
+executor: slurm
+latency-wait: 60
+restart-times: 1
 max-jobs-per-second: 10
 max-status-checks-per-second: 1
 local-cores: 1
-latency-wait: 120
-jobs: 500
 keep-going: True
 rerun-incomplete: True
 printshellcmds: True
 use-conda: True
+show-failed-logs: True
+cache: True
+use-envmodules: True
+jobs: 500
+
+default-resources:
+  slurm_partition: general
+  runtime: 60
+  slurm_extra: "'--mail-type=FAIL --mail-user=cannecar@ad.unc.edu'"
+
+set-resources:
+  sam2bam:
+    envmodules: "samtools"
+  align_bowtie2:
+    runtime: 1440
+    envmodules: "bowtie2"
+  align_minimap2:
+    runtime: 1440
+    envmodules: "minimap2"
+  sort_bams:
+    mem: 14000
+    envmodules: "samtools"
+  index_bams:
+    runtime: 120
+    envmodules: "sambamba"
+  bcftools_mpileup:
+    runtime: 1440
+    envmodules: "bcftools"
+  bcftools_call:
+    runtime: 1440
+    envmodules: "bcftools"
+  sort_bams:
+    mem_mb: 20000

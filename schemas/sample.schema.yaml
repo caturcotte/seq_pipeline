@@ -1,50 +1,27 @@
-$schema: "https://json-schema.org/draft-06/schema#"
+$schema: "https://json-schema.org/draft-07/schema#"
 description: an entry in the sample sheet
 properties:
-  sample:
-    description: sample name/identifier
+  condition:
+    description: condition/genotype
     type: string
-  group:
-    description: group for sample to be called in, if calling in groups
+  sample_type:
+    description: whether this is a G0 male or his progeny (F1)
     type: string
-    default: $sample
+  sample_num:
+    description: sample number/identifier
+    type: integer
   platform:
     description: platform the data is from
     enum:
       - illumina
       - nanopore
-  read_type:
-    description: whether reads are paired-end or single-end
-    enum:
-      - paired
-      - single
   location:
     description: shorthand for a location defined in config.yaml where data is stored
     type: string
-  source:
-    description: where the data came from, it will find data based on the directory tree structure used by the data source
-    enum:
-      - novogene
-      - nanopore
-      - other
-  lane_ids:
-    description: whether FASTQ files were labeled with lane ID information
-    type: boolean
-    default: false
   barcode:
-    description: barcode sequence if barcodes were not already trimmed
-    type: string
-  read_1_adapter:
-    description: adapter sequence for read 1s of paired-end data or all reads of single-end data, if not already trimmed
-    type: string
-  read_2_adapter:
-    description: adapter sequence for read 2s of paired-end data if not already trimmed
-    type: string
-  description:
-    description: some information about the sample
-    type: string
+    description: barcode number for nanopore sequences
+    type: integer
 required:
-  - sample
+  - condition
   - platform
   - location
-  - source

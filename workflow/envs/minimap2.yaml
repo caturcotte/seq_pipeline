@@ -1,7 +1,8 @@
 channels:
-  - bioconda
   - conda-forge
-  - nodefaults
+  - bioconda
+  - defaults
 dependencies:
   - minimap2
   - samtools
+channel_priority: strict

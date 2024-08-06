@@ -1,19 +1,19 @@
-$schema: "https://json-schema.org/draft/2020-12/schema"
+$schema: "http://json-schema.org/draft-07/schema#"
 title: DNA sequencing pipeline configuration
 description: Config file for sequencing pipeline
 type: object
 properties:
-  output:
-    description: What types of files to output
-    type: array
-    items:
-      type: string
-    minItems: 1
   ref_name:
     description: Name of the reference (can be anything)
     type: string
   reference:
     description: Path to the reference FASTA file
+    type: string
+  ref_parent:
+    description: Name of the parent to be used as a reference (must match name in sample sheet)
+    type: string
+  alt_parent:
+    description: Name of the other parent (must match name in sample sheet)
     type: string
   mask_repeats:
     description: Whether to mask repetitive sequences in the reference genome
@@ -25,86 +25,8 @@ properties:
       "*":
         type: string
     minItems: 1
-  alignment:
-    description: Options related to read alignment
-    type: object
-    properties:
-      aligner:
-        description: Which aligner to use
-        enum:
-          - bowtie2
-          - bwa_mem
-          - minimap2
-      alignment_options:
-        description: raw options to pass to the aligner
-        type: string
-    required:
-      - aligner
-  calling:
-    description: Options for variant calling
-    type: object
-    properties:
-      caller:
-        description: SNP caller(s) to be used
-        enum:
-          - bcftools
-          - freebayes
-          - both
-      chromosomes:
-        description: Chromosomes to call SNPs on
-        type: array
-        items:
-          type: string
-      regions:
-        description: Regions to call SNPs on, format like regions in IGV
-        type: array
-        items:
-          type: string
-      bcftools_opts:
-        description: Options to use for BCFtools SNP calling
-        type: object
-        properties:
-          call_type:
-            enum: 
-              - m
-              - c
-        required:
-          - call_type
-      freebayes_opts:
-        description: Options to use for freebayes SNP calling
-        type: object
-        properties:
-          chunks:
-            type: integer
-            default: 100
-    required:
-      - caller
-  filtering:
-    description: Conditions to use for filtering SNPs
-    type: object
-    properties:
-      "*":
-        description: A sample, group, or all groups
-        type: object
-        properties:
-          biallelic_only:
-            description: only output biallelic sites
-            type: boolean
-          snps_only:
-            description: only output SNPs
-            type: boolean
-          min_depth:
-            description: minimum depth cutoff for variants
-            type: integer
-          max_depth:
-            description: maximum depth cutoff for variants
-            type: integer
-          raw_options:
-            description: raw options to feed to bcftools filter
-            type: string
 required:
-  - output
   - ref_name
   - reference
-  - alignment
-  - calling
+  - ref_parent
+  - alt_parent

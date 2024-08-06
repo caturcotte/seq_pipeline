@@ -3,6 +3,5 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - bowtie2
-  - samtools
+  - pyarrow
 channel_priority: strict

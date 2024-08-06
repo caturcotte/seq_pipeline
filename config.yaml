@@ -1,79 +1,24 @@
-# options are one or more of:
-# alignments
-# calls
-# consensus (consensus sequences from calls)
-# msa (multiple sequence alignment of all of the consensus seqs in a group)
-# tsvs (converts vcf to tsv to easily load calls into R)
-output:
-  - alignments
-  - calls
-  - tsvs
-
 # location of the reference genome on longleaf
 ref_name: 'dm6'
 reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
-mask_repeats: True # masking repeats is NOT compatible with MSA output
+
+ref_parent: "w1118"
+alt_parent: "oregonr"
+
+mask_repeats: False # masking repeats is NOT compatible with MSA output
 # file locations to use in the sample sheet.
 # If location is set to data for paired sample A, snakemake will look for the files:
 # /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
 # /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
 data_locations:
-  data: "/work/users/c/a/cannecar/parentals/"
+  data: "/users/c/a/cannecar/co_analysis/illumina/"
+  ont: "/work/users/c/a/cannecar/barcoding_no_sample/"
+  data_new: "/work/users/c/a/cannecar/parentals_new/"
+  novogene: "/work/users/c/a/cannecar/parentals/"
 
-alignment:
-  aligner: "bowtie2" # bwa or bowtie2
-
-calling:
-  # bcftools, freebayes or both
-  caller: "both"
-  # chromosomes
-  #   - chr2L
-  #   - chr2R
-  # regions
-  #   - chr3L:452389-1458939
-
-  # choosing both will only use variants called by both bcftools and freebayes
-  bcftools_opts:
-    call_type: "m" #c or m, c is good for sequence of somatic tissue, m is good for detecting variants in low abundance e.g. germline. c can only detect up to two alleles at each locus
-    pileup_options: "--max-depth 300 --min-BQ 15"
-  freebayes_opts:
-    chunks: 100 # you shouldn't need to change this
-
-# how to filter variants, organized by group
-filtering:
-  all:
-    snps_only: True
-    biallelic_only: True
-    min_depth: 30
-    # max_depth: 300
-    # min_qd: 2
-    min_gq: 20
-    # raw_options:
-  parents:
-    homozygous_only: True
-  # w1118:
-  #   homozygous_only: True
-  # Oregon_RM:
-  #   homozygous_only: True
-
-# analysis:
-  # get common and unique SNPs between two datasets (either samples or groups)
-  # datasets generated from comparisons can be used for additional comparisons
-  # compare_variants: True
-  # comparisons:
-  #   from_w1118:
-  #     comparison: common
-  #     datasets:
-  #       - w1118
-  #       - progeny
-  #   from_oregonr:
-  #     comparison: common
-  #     datasets:
-  #       - Oregon_RM
-  #       - progeny
-  #   unique_snps:
-  #     comparison: unique
-  #     datasets:
-  #       - from_w1118
-  #       - from_oregonr
-
+envmodules:
+  bowtie2: "bowtie2/2.4.5"
+  minimap2: "minimap2/2.26"
+  repeatmasker: "repeatmasker/4.1.5"
+  sambamba: "sambamba/0.8.2"
+  samtools: "samtools/1.20"

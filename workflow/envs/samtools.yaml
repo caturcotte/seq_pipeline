@@ -1,6 +1,7 @@
 channels:
-  - bioconda
   - conda-forge
-  - nodefaults
+  - bioconda
+  - defaults
 dependencies:
-  - samtools=1.18
+  - samtools
+channel_priority: strict

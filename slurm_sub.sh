@@ -8,12 +8,7 @@
 #SBATCH --mail-user=cannecar@ad.unc.edu
 
 module purge
-module load anaconda
-module load seqkit
-module load repeatmasker
-module load samtools
-module load sambamba
-module load muscle
-module load freebayes
+mamba activate ndj
 
-snakemake --profile=slurm --use-conda
+export SNAKEMAKE_OUTPUT_CACHE=/proj/sekellab/.snakemake-cache/
+snakemake --profile=slurm
