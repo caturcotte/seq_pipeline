@@ -3,5 +3,6 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - pandas
-channel_priority: strict
+  - modin-all
+  - duckdb
+# channel_priority: strict

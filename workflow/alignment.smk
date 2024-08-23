@@ -1,4 +1,4 @@
-ruleorder: mv_nolane_bams > merge_bams
+# ruleorder: merge_bams > mv_nolane_bams
 
 
 rule align_bowtie2:
@@ -63,13 +63,13 @@ rule sort_bams:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
 
 
-rule mv_nolane_bams:
-    input:
-        "data/alignments/{sample}_{sample}_sort.bam",
-    output:
-        temp("data/alignments/{sample}.bam"),
-    shell:
-        "mv {input} {output}"
+# rule mv_nolane_bams:
+#     input:
+#         "data/alignments/{sample}_{sample}_sort.bam",
+#     output:
+#         temp("data/alignments/{sample}.bam"),
+#     shell:
+#         "mv {input} {output}"
 
 
 rule merge_bams:
@@ -80,8 +80,10 @@ rule merge_bams:
     threads: 4
     envmodules:
         config['envmodules']['sambamba']
-    shell:
-        "sambamba merge -t {threads} {output} {input}"
+    script:
+        "scripts/mv_or_merge_bams.py"
+    # shell:
+    #     "sambamba merge -t {threads} {output} {input}"
 
 
 rule mark_duplicates:

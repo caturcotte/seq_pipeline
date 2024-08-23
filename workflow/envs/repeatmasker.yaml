@@ -4,4 +4,4 @@ channels:
   - defaults
 dependencies:
   - repeatmasker
-channel_priority: strict
+# channel_priority: strict

@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
-
 import pyarrow as pa
 import pyarrow.csv as pc
 import pyarrow.parquet as pq
+
 
 if __name__ == "__main__":
     f = snakemake.input[0]
@@ -20,7 +19,7 @@ if __name__ == "__main__":
         ('allele_depth', pa.string()),
     ]) 
     read_options = pc.ReadOptions(
-        block_size=10000,
+        block_size=30000,
     )
     parse_options = pc.ParseOptions(
         delimiter='\t'

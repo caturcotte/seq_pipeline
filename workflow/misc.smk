@@ -41,22 +41,13 @@ rule faidx_ref:
         "samtools faidx {input}"
 
 
-# rule gzip_fastq:
-#     input:
-#         "{prefix}.fq",
-#     output:
-#         "{prefix}.fq.gz",
-#     shell:
-#         "gzip {input}"
-
-
-rule copy_fastqs:
+rule symlink_fastqs:
     input:
-        find_all_fastqs_for_id,
+        get_fastq_from_id,
     output:
         "data/reads/{sample}_{iden}{read}.fq.gz",
     shell:
-        "cat {input} > {output}"
+        "ln -s {input} {output}"
 
 
 rule minimap2_idx:
@@ -103,3 +94,12 @@ rule bcftools_index:
         config['envmodules']['samtools']
     shell:
         "bcftools index {input}"
+
+
+rule gzip_fastq:
+    input:
+        "{prefix}.fastq",
+    output:
+        "{prefix}.fastq.gz"
+    shell:
+        "gzip {input}"

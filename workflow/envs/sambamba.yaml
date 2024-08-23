@@ -4,4 +4,4 @@ channels:
   - defaults
 dependencies:
   - samtools
-channel_priority: strict
+# channel_priority: strict

@@ -1,0 +1,149 @@
+class Group:
+    def __init__(self, sample_sheet, config):
+        self.sample_sheet = sample_sheet
+        self.config = config
+    
+    def get_sample(self, sample_name)
+        return self.sample_sheet.loc[self.sample_sheet['sample'] == sample_name]
+
+    # get sample field information to create sample names
+    def get_samples(self):
+        samples = []
+        self.sample_sheet['sample_num'] = round(self.sample_sheet['sample_num'])
+        sample_fields = list(zip(
+            self.sample_sheet["condition"],
+            self.sample_sheet["sample_type"].fillna(''),
+            self.sample_sheet["sample_num"].fillna(''),
+        ))
+        for i in sample_fields:
+            s_fields.append([j for j in i if j])
+        for i in s_fields:
+            if len(i) > 2:
+                i[2] = str(int(i[2])).zfill(3)
+        sample_names = ['-'.join(i) for i in s_fields]
+        self.sample_sheet['sample'] = sample_names
+        for i in sample_names:
+            attrs = []
+            sample = self.get_sample(sample_name)
+            attrs = [
+                self,
+                sample['sample'].iloc[0]
+                sample['condition'].iloc[0],
+                sample['generation'].iloc[0],
+                sample['id'].iloc[0],
+                sample['platform'].iloc[0],
+                sample['location'].iloc[0]
+            ]
+            if sample['barcode'].notnull().all():
+                attrs.append(f"barcode{int(sample['barcode'].iloc[0]):02}")
+            if sample['date'].notnull().all():
+                attrs.append(pd.to_datetime(sample['date']).strftime("%Y%m%d"))
+            
+    def get_progeny(self):
+        return [i for i in samples if i.sample_type == 'progeny']
+    
+    def get_parents(self):
+        return [i for i in samples if i.sample_type == 'progeny']
+
+
+class Sample:
+    def __init__(
+        self,
+        group,
+        name,
+        condition,
+        gen,
+        num,
+        platform,
+        location,
+        barcode=None,
+        date=None,
+        ):
+        self.group = group
+        self.name = name
+        self.condition = condition
+        self.gen = gen
+        self.num = num
+        self.platform = platform
+        self.location = location
+        self.barcode = barcode
+        self.date = date
+
+        
+    def get_config(self):
+        return self.group.config
+    
+
+    def get_sample_sheet(self):
+        return self.group.sample_sheet
+
+
+    def get_sample_row(self):
+        sample_sheet = self.get_sample_sheet()
+        return sample_sheet[sample_sheet['sample'] == self.name]
+
+
+    def get_attrs_from_sheet(self):
+        sample = self.get_sample_row()
+        self.condition = sample['condition'].iloc[0]
+        self.gen = sample['generation'].iloc[0]
+        self.num = sample['id'].iloc[0]
+        self.platform = sample['platform'].iloc[0]
+        self.location = sample['location'].iloc[0]
+
+
+    def get_sample_type(self):
+        config = self.get_config()
+        if self.condition == config['ref_parent']:
+            self.sample_type = 'ref_parent'
+        elif self.condition == config['alt_parent']:
+            self.sample_type = 'alt_parent'
+        else:
+            self.sample_type = 'progeny'
+    
+
+# search each file in a directory for a regex match
+    def regex_over_dir(path, regex):
+        p = re.compile(regex)
+        matches = []
+        for i in path.iterdir():
+            match = p.search(str(i))
+            if match is not None:
+                matches.append(match)
+        return matches
+    def get_data_path(self):
+        if self.location not in config["data_locations"]:
+            raise ValueError(f"Sample location {self.location} not found in config file.")
+        filepath = Path(config["data_locations"][self.location])
+        if not filepath.exists():
+            raise OSError(f"File directory {str(filepath)} not found.")
+        if sample.platform == 'nanopore':
+            d = (f"{date}/{self.barcode}")
+        else:
+            d = self.name
+        return filepath.joinpath(d)
+
+
+    def find_all_fastqs(self):
+        path = self.get_data_path()
+        sample = self.get_sample_row()
+        if self.platform == 'nanopore': 
+            regex = rf"(FA[A-Z][0-9]{{5}}_pass_{self.barcode}_\w{{8}}_\w{{8}}_[0-9]*\.f(?:ast)?q(?:\.gz)?)"
+        else:
+            regex = rf"(.*{self.name}_[a-zA-Z0-9_-]*(?:_[12])?\.f(?:ast)?q(?:\.gz)?)"
+        matches = regex_over_dir(path, regex)
+        if not matches:
+            raise OSError(f"No reads found in {str(path)} for sample {sample_name}.")
+        return [i[0] for i in matches]
+
+    def get_ids_for_sample(self):
+        files = self.find_all_fastqs()
+        if self.barcode:
+            regex = rf"(?<=(?:FA[A-Z][0-9]{{5}}_pass_{self.barcode}_\w{{8}}_\w{{8}}_))([0-9]*)(?=(?:\.f(?:ast)?q(?:\.gz)?))"
+        else:
+            regex = rf"(?<=(?:.*{self.name}_)([a-zA-Z0-9_-]*)(?=(?:_[12])?\.f(?:ast)?q(?:\.gz)?)"
+        matches = regex_over_dir(path, regex)
+        if matches:
+            return [i[0] for i in matches]
+        else:
+            return [self.name]

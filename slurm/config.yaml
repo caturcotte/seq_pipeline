@@ -1,6 +1,6 @@
 executor: slurm
 latency-wait: 60
-restart-times: 1
+restart-times: 0
 max-jobs-per-second: 10
 max-status-checks-per-second: 1
 local-cores: 1
@@ -19,25 +19,32 @@ default-resources:
   slurm_extra: "'--mail-type=FAIL --mail-user=cannecar@ad.unc.edu'"
 
 set-resources:
-  sam2bam:
-    envmodules: "samtools"
+  minimap2_idx:
+    mem_mb: 40000
   align_bowtie2:
     runtime: 1440
-    envmodules: "bowtie2"
   align_minimap2:
     runtime: 1440
-    envmodules: "minimap2"
+    mem_mb: 40000
   sort_bams:
-    mem: 14000
-    envmodules: "samtools"
+    mem_mb: 14000
   index_bams:
     runtime: 120
-    envmodules: "sambamba"
   bcftools_mpileup:
+    mem_mb: 40000
     runtime: 1440
-    envmodules: "bcftools"
   bcftools_call:
+    mem_mb: 40000
     runtime: 1440
-    envmodules: "bcftools"
   sort_bams:
     mem_mb: 20000
+  mark_duplicates:
+    mem_mb: 20000
+  convert_tsv_to_parquet:
+    mem_mb: 50000
+  rearrange_reference_parquet:
+    mem_mb: 150000
+    runtime: 1440
+  rearrange_sample_parquet:
+    mem_mb: 50000
+    runtime: 1440

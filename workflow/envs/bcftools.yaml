@@ -4,4 +4,4 @@ channels:
   - defaults
 dependencies:
   - bcftools
-channel_priority: strict
+# channel_priority: strict

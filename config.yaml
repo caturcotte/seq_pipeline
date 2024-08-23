@@ -5,16 +5,25 @@ reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 ref_parent: "w1118"
 alt_parent: "oregonr"
 
+chr_names:
+- "chr2L"
+- "chr2R"
+- "chr3L"
+- "chr3R"
+- "chr4"
+- "chrX"
+
+min_qual: 150
+min_depth: 0
+
 mask_repeats: False # masking repeats is NOT compatible with MSA output
 # file locations to use in the sample sheet.
 # If location is set to data for paired sample A, snakemake will look for the files:
 # /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
 # /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
 data_locations:
-  data: "/users/c/a/cannecar/co_analysis/illumina/"
-  ont: "/work/users/c/a/cannecar/barcoding_no_sample/"
-  data_new: "/work/users/c/a/cannecar/parentals_new/"
-  novogene: "/work/users/c/a/cannecar/parentals/"
+  illumina_data: "/users/c/a/cannecar/ndj_progeny/illumina_data"
+  nanopore_data: "/users/c/a/cannecar/ndj_progeny/nanopore_data"
 
 envmodules:
   bowtie2: "bowtie2/2.4.5"
@@ -22,3 +31,5 @@ envmodules:
   repeatmasker: "repeatmasker/4.1.5"
   sambamba: "sambamba/0.8.2"
   samtools: "samtools/1.20"
+  r: "r/4.4.0"
+  perl: "perl/5.36.0"

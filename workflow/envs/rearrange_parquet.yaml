@@ -4,10 +4,8 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python =3.12
-  - jupyter =1.0
-  - jupyterlab_code_formatter =1.4
   - pandas
-  - jupysql
-  - duckdb 
-channel_priority: strict
+  - pyarrow
+  - duckdb
+  - python-duckdb
+# channel_priority: strict

@@ -4,4 +4,4 @@ channels:
   - defaults
 dependencies:
   - pyarrow
-channel_priority: strict
+# channel_priority: strict

@@ -1,22 +1,31 @@
 import os
+import pandas as pd
 from itertools import combinations, chain
 from snakemake.utils import validate
 
 
 configfile: "config.yaml"
-
-
 validate(config, "schemas/config.schema.yaml")
 
 
-include: "workflow/functions.smk"
+include: "workflow/sample_sheet_functions.smk"
+
+
+sample_sheet = pd.read_csv('sample_sheet.csv')
+validate (sample_sheet, 'schemas/sample.schema.yaml')
+sample_sheet = concat_sample_names(sample_sheet)
+
+samples = get_sample_names(sample_sheet)
+progeny = get_progeny_names(sample_sheet, config)
+parents = get_parent_names(sample_sheet, config)
+
+
+include: "workflow/input_functions.smk"
 include: "workflow/alignment.smk"
 include: "workflow/calling.smk"
 include: "workflow/misc.smk"
 include: "workflow/vcf_filtering.smk"
-
-
-validate(sample_sheet, "schemas/sample.schema.yaml")
+include: "workflow/tiger.smk"
 
 
 localrules:
@@ -28,13 +37,17 @@ localrules:
 
 
 wildcard_constraints:
-    sample="|".join(list(sample_sheet["sample"])),
+    sample="|".join(samples),
+    progeny="|".join(progeny),
     aligner="|".join(["bt2", "mm2"]),
-    ref=get_ref_no_input(base=True),
-    iden="|".join(list_all_idens(sample_sheet)),
+    ref=get_ref_no_input(config, base=True, fai=False),
+    read="|".join(["_1", "_2", ""]),
+    iden="|".join(list_all_idens(sample_sheet, config)),
     i=r"\d+",
 
 
 rule all:
     input:
-        "data/tiger/tiger_output.parquet",
+        "data/tiger/marker_df.pq",
+        "data/tiger/pre_intervals_df.pq",
+        "data/tiger/intervals_df.pq",

@@ -5,4 +5,4 @@ channels:
 dependencies:
   - minimap2
   - samtools
-channel_priority: strict
+# channel_priority: strict
