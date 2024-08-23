@@ -6,7 +6,7 @@
 # In[ ]:
 
 
-import argparse
+import arVgparse
 import os
 
 parser = argparse.ArgumentParser(description='Import args from snakemake into iPython')
@@ -47,7 +47,7 @@ get_ipython().run_line_magic('load_ext', 'sql')
 # get_ipython().run_line_magic('config', 'SqlMagic.feedback = False')
 # get_ipython().run_line_magic('config', 'SqlMagic.displaycon = False')
 
-conn = duckdb.connect()
+conn = duckdb.connect('file.db')
 get_ipython().run_line_magic('sql', 'conn --alias duckdb')
 
 
