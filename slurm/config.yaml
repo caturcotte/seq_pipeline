@@ -43,8 +43,13 @@ set-resources:
   convert_tsv_to_parquet:
     mem_mb: 50000
   rearrange_reference_parquet:
-    mem_mb: 150000
+    mem_mb: 50000
     runtime: 1440
   rearrange_sample_parquet:
     mem_mb: 50000
     runtime: 1440
+  run_rtiger:
+    mem_mb: 50000
+  process_tiger_output:
+    mem_mb: 150000
+    runtime: 2880

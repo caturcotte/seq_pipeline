@@ -91,3 +91,20 @@ def get_ref_bowtie2(w):
 # get ref index for minimap2
 def get_ref_minimap2(w):
     return "".join([get_ref(w), ".mmi"])
+
+
+def aggregate_input(w, breaks=False):
+    # decision based on content of output file
+    # Important: use the method open() of the returned file!
+    # This way, Snakemake is able to automatically download the file if it is generated in
+    # a cloud environment without a shared filesystem.
+    with open(checkpoints.make_mosdepth_df.get().output[0], 'r') as file:
+        smps=[i.rstrip() for i in file]
+    passed_samples = []
+    for i in smps:
+        if breaks:
+            passed_samples.append(f'data/tiger/{i}/{i}.CO_estimates.breaks.txt')
+        else:
+            passed_samples.append(f'data/tiger/{i}/{i}.CO_estimates.txt')
+    return passed_samples
+

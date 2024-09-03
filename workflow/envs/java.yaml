@@ -3,5 +3,5 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - modin-all
+  - openjdk=7.*
 # channel_priority: strict

@@ -7,12 +7,12 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=cannecar@ad.unc.edu
 
-module purge
-module load anaconda/2024.02
-conda activate ndj
-conda config --set channel_priority strict
-conda config --set solver libmamba
+# module purge
+# module load anaconda/2024.02
+# conda activate ndj
+# conda config --set channel_priority strict
+# conda config --set solver libmamba
 snakemake --version
 
 export SNAKEMAKE_OUTPUT_CACHE=/proj/sekellab/.snakemake-cache/
-snakemake --cores 4 --profile=slurm --notemp
+snakemake --profile=slurm --notemp

@@ -26,6 +26,7 @@ include: "workflow/calling.smk"
 include: "workflow/misc.smk"
 include: "workflow/vcf_filtering.smk"
 include: "workflow/tiger.smk"
+include: "workflow/qc.smk"
 
 
 localrules:
@@ -48,6 +49,6 @@ wildcard_constraints:
 
 rule all:
     input:
-        "data/tiger/marker_df.pq",
-        "data/tiger/pre_intervals_df.pq",
-        "data/tiger/intervals_df.pq",
+        "data/qc/multiqc.html",
+        "data/tiger_output/hmm_states.csv",
+        "data/tiger_output/hmm_intervals.csv"

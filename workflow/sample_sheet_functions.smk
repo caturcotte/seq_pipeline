@@ -103,8 +103,8 @@ def get_fastq(sample_name, id, read, df, config):
     path = get_data_path(sample_name, df, config)
     if has_barcode(sample_name, df):
         # if all(str(i).startswith("fastq") for i in files):
-           #  regex = rf"(\w*_{id}\.f(?:ast)?q\.gz)"
-       #  elif all(str(i).startswith("FA") for i in files):
+            # regex = rf"(\w*_{id}\.f(?:ast)?q\.gz)"
+        # elif all(str(i).startswith("FA") for i in files):
         barcode = get_barcode(sample_name, df)
             # regex = rf"(FA[A-Z][0-9]{{5}}_pass_{barcode}_\w{{8}}_\w{{8}}_{id}\.f(?:ast)?q\.gz)"
         regex = rf"{barcode}.fq.gz"

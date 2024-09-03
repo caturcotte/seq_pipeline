@@ -5,13 +5,13 @@ reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 ref_parent: "w1118"
 alt_parent: "oregonr"
 
-chr_names:
-- "chr2L"
-- "chr2R"
-- "chr3L"
-- "chr3R"
-- "chr4"
-- "chrX"
+chromosomes:
+  "chr2L": 23513712
+  "chr2R": 25286936
+  "chr3L": 28110227
+  "chr3R": 32079331
+  "chrX": 23542271
+  "chrY": 3667352
 
 min_qual: 150
 min_depth: 0
@@ -33,3 +33,4 @@ envmodules:
   samtools: "samtools/1.20"
   r: "r/4.4.0"
   perl: "perl/5.36.0"
+  java: 'java/17.0.2'
