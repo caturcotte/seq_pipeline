@@ -66,7 +66,7 @@ def get_data_path(sample_name, df, config):
     if path.exists():
         return path
     else:
-        raise OSError(f"Directories containing reads not found in {location}.")
+        raise OSError(f"Directories containing reads not found in {location}: {str(path)}.")
 
 
 # find all fastqs associated with a sample
@@ -190,7 +190,12 @@ def get_parent_names(df, config):
 
 
 def get_progeny_names(df, config):
-    return [i for i in get_sample_names(df) if i not in get_parent_names(df, config)]
+    parents = [
+        config['ref_parent'],
+        config['alt_parent'],
+        config['paternal_sample']
+    ]
+    return [i for i in get_sample_names(df) if i not in parents] 
 
 
 def get_sample_type(sample_name, df, config):

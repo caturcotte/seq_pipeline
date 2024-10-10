@@ -1,0 +1,21 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bcftools
+  - bowtie2
+  - clair3
+  - dorado
+  - duckdb
+  - longphase
+  - minimap2
+  - pandas
+  - pyarrow
+  - python-duckdb
+  - repeatmasker
+  - r-base
+  - r-tidyverse
+  - r-ggthemes
+  - samtools
+  - whatshap

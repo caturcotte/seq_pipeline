@@ -10,8 +10,10 @@ def get_ref(w, config=config, base=False, fai=False):
 
 
 # get the format for transforming vcfs into tsvs
-def get_query_format(w):
+def get_query_format(w, sample_sheet=sample_sheet, config=config):
     cols = ["%SAMPLE", "%CHROM", "%POS", "%REF", "%ALT", "%QUAL", "%GT", "%DP", "%AD"]
+    if not is_short_read(w.sample, sample_sheet):
+        cols.append("%PS")
     query = "\t".join(cols)
     return "[" + query + "]\n"
 
@@ -31,7 +33,16 @@ def find_all_fastqs_for_id(w, sample_sheet=sample_sheet, config=config):
 def get_fastq_from_id(w, sample_sheet=sample_sheet, config=config):
     return get_fastq(w.sample, w.iden, w.read, sample_sheet, config)
 
+def get_sedex(w, sample_sheet=sample_sheet):
+    if is_short_read(w.sample, sample_sheet):
+        return "\'1s/^/sample\\tchromosome\\tposition\\treference\\tvariant\\tquality\\tgenotype\\tdepth\\tallele_depth\\n/\'"
+    else:
+        return "\'1s/^/sample\\tchromosome\\tposition\\treference\\tvariant\\tquality\\tgenotype\\tdepth\\tallele_depth\\tphase_set\\n/\'"
 
+def check_if_short_read(w, sample_sheet=sample_sheet):
+    if is_short_read(w.sample, sample_sheet):
+        return True
+    return False
 def get_alns_to_merge(w, sample_sheet=sample_sheet, config=config):
     return [
         str(Path("data/alignments/").joinpath(f"{w.sample}_{i}_sort.bam"))
@@ -67,6 +78,7 @@ def get_final_bams(w, bai=False, sample_sheet=sample_sheet):
     return "".join(file)
 
 
+# updated to get bam from dorado instead of fastq
 def get_reads_to_map(w, sample_sheet=sample_sheet, config=config):
     sample = get_sample(w.sample, sample_sheet)
     if has_lane_id(w.sample, sample_sheet, config):
@@ -75,7 +87,9 @@ def get_reads_to_map(w, sample_sheet=sample_sheet, config=config):
         f = "data/reads/{sample}_{sample}"
     if is_short_read(w.sample, sample_sheet):
         basename = [f"{f}_1", f"{f}_2"]
+        # return ["".join([i, ".fq.gz"]) for i in basename]
     else:
+        # return "".join([f, ".bam"])
         basename = [f]
     final = ["".join([i, ".fq.gz"]) for i in basename]
     return final
@@ -93,6 +107,17 @@ def get_ref_minimap2(w):
     return "".join([get_ref(w), ".mmi"])
 
 
+def get_bcf_file(w, sample_sheet=sample_sheet, csi=False):
+    if is_short_read(w.sample, sample_sheet):
+        caller='bcftools'
+        return f"data/calls/{w.sample}_raw_{caller}.bcf"
+    else:
+        caller='phased'
+    if csi:
+        return f"data/calls/{w.sample}_raw_{caller}.bcf.csi"
+    return f"data/calls/{w.sample}_raw_{caller}.bcf"
+
+
 def aggregate_input(w, breaks=False):
     # decision based on content of output file
     # Important: use the method open() of the returned file!
@@ -103,7 +128,7 @@ def aggregate_input(w, breaks=False):
     passed_samples = []
     for i in smps:
         if breaks:
-            passed_samples.append(f'data/tiger/{i}/{i}.CO_estimates.breaks.txt')
+            passed_samples.append(f'data/tiger/{i}/{i}.CO_estimates.smoothed.breaks.txt')
         else:
             passed_samples.append(f'data/tiger/{i}/{i}.CO_estimates.txt')
     return passed_samples

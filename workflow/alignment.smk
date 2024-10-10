@@ -1,5 +1,13 @@
 # ruleorder: merge_bams > mv_nolane_bams
 
+# rule basecall:
+#     input:
+#         pods=get_pod_files,
+#     output:
+#         "data/reads/{sample}.bam",
+#     shell:
+#         "workflow/scripts/dorado-0.8.0-linux-x64/bin/dorado basecaller --kit-name SQK-NBD114.24 sup {input} > {output}"
+
 
 rule align_bowtie2:
     input:
@@ -23,10 +31,10 @@ rule align_minimap2:
     output:
         temp("data/alignments/{sample}_{iden}_mm2.sam"),
     threads: 32
-    envmodules:
-        config['envmodules']['minimap2']
+    conda:
+        "envs/minimap2.yaml"
     shell:
-        "minimap2 -ax map-ont {input.ref} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' -t {threads} -o {output} {input.reads}"
+        "minimap2 -ax lr:hq {input.ref} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' -t {threads} -o {output} {input.reads}"
 
 
 rule sam2bam:

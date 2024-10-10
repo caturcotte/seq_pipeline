@@ -23,7 +23,8 @@ rule mosdepth:
         "v2.11.1/bio/mosdepth"
 
 
-checkpoint make_mosdepth_df:
+# checkpoint make_mosdepth_df:
+rule make_mosdepth_df:
     input:
         expand("data/qc/mosdepth/{sample}.mosdepth.summary.txt", sample=progeny),
     output:

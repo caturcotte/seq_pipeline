@@ -6,7 +6,7 @@
 # In[ ]:
 
 
-import arVgparse
+import argparse
 import os
 
 parser = argparse.ArgumentParser(description='Import args from snakemake into iPython')
@@ -24,10 +24,11 @@ args = parser.parse_args()
 
 ref_parent_file = args.ref_parent_file
 alt_parent_file = args.alt_parent_file
+ref_parent_name = args.ref_parent_name
+alt_parent_name = args.alt_parent_name
 ref_qual_cutoff = args.ref_qual_cutoff
 ref_depth_cutoff = args.ref_depth_cutoff
 ref_out_file = args.ref_out_file
-os.environ['DATABASE_URL'] = f"duckdb://default.db"
 
 
 # In[ ]:
@@ -47,7 +48,7 @@ get_ipython().run_line_magic('load_ext', 'sql')
 # get_ipython().run_line_magic('config', 'SqlMagic.feedback = False')
 # get_ipython().run_line_magic('config', 'SqlMagic.displaycon = False')
 
-conn = duckdb.connect('file.db')
+conn = duckdb.connect('reference.db')
 get_ipython().run_line_magic('sql', 'conn --alias duckdb')
 
 
@@ -78,7 +79,7 @@ get_ipython().run_cell_magic('sql', '', 'SET preserve_insertion_order = false;\n
 # In[45]:
 
 
-get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE VIEW parents AS\nSELECT\n    sample,\n    chromosome,\n    CAST(position AS INTEGER) AS int_pos,\n    quality,\n    genotype,\n    depth,\n    allele_depth,\n    UPPER(reference) AS up_reference,\n    UPPER(variant) AS up_variant,\n    (CASE WHEN variant='.' THEN reference ELSE UPPER(variant) END) AS mod_variant\nFROM\n    read_parquet(['{{ref_parent_file}}', '{{alt_parent_file}}']);\n")
+get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE TABLE parents AS\nSELECT\n    sample,\n    chromosome,\n    CAST(position AS INTEGER) AS int_pos,\n    quality,\n    genotype,\n    depth,\n    allele_depth,\n    UPPER(reference) AS up_reference,\n    UPPER(variant) AS up_variant,\n    (CASE WHEN variant='.' THEN reference ELSE UPPER(variant) END) AS mod_variant\nFROM\n    read_parquet(['{{ref_parent_file}}', '{{alt_parent_file}}']);\n")
 
 
 # Isolate sites where there are 2 variants (meaning one parent is different from the other).
@@ -86,7 +87,7 @@ get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE VIEW parents AS\nSEL
 # In[46]:
 
 
-get_ipython().run_cell_magic('sql', '', 'CREATE\nOR REPLACE VIEW check_unique_variants AS\nSELECT\n    chromosome,\n    int_pos,\n    COUNT(up_variant) AS n_variants\nFROM\n    parents\nGROUP BY\n    chromosome,\n    int_pos\nHAVING\n    n_variants >= 2;\n')
+get_ipython().run_cell_magic('sql', '', 'CREATE\nOR REPLACE TABLE check_unique_variants AS\nSELECT\n    chromosome,\n    int_pos,\n    COUNT(up_variant) AS n_variants\nFROM\n    parents\nGROUP BY\n    chromosome,\n    int_pos\nHAVING\n    n_variants >= 2;\n')
 
 
 # Create new reference from the reference parent.
@@ -94,13 +95,13 @@ get_ipython().run_cell_magic('sql', '', 'CREATE\nOR REPLACE VIEW check_unique_va
 # In[47]:
 
 
-get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE VIEW temp_ref AS\nSELECT\n    sample,\n    parents.chromosome,\n    parents.int_pos,\n    up_reference AS reference,\n    mod_variant,\n    quality,\n    genotype,\n    depth,\n    allele_depth\nFROM\n    parents\n    INNER JOIN check_unique_variants ON (\n        parents.chromosome = check_unique_variants.chromosome\n        AND parents.int_pos = check_unique_variants.int_pos\n    )\nWHERE\n    genotype != '0/1'\n    AND quality > '{{ref_qual_cutoff}}'\n    AND LENGTH (mod_variant) <= 1\n    AND LENGTH (up_reference) <= 1\n    AND depth > '{{ref_depth_cutoff}}';\n")
+get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE TABLE temp_ref AS\nSELECT\n    sample,\n    parents.chromosome,\n    parents.int_pos,\n    up_reference AS reference,\n    mod_variant,\n    quality,\n    genotype,\n    depth,\n    allele_depth\nFROM\n    parents\n    INNER JOIN check_unique_variants ON (\n        parents.chromosome = check_unique_variants.chromosome\n        AND parents.int_pos = check_unique_variants.int_pos\n    )\nWHERE\n    genotype != '0/1'\n    AND quality > '{{ref_qual_cutoff}}'\n    AND LENGTH (mod_variant) <= 1\n    AND LENGTH (up_reference) <= 1\n    AND depth > '{{ref_depth_cutoff}}';\n")
 
 
 # In[48]:
 
 
-get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE VIEW ref_parent AS\nSELECT\n    sample,\n    chromosome,\n    int_pos,\n    mod_variant AS ref_allele\nFROM\n    temp_ref\nWHERE\n    sample = '{{ref_parent_name}}';\n\nCREATE\nOR REPLACE VIEW alt_parent AS\nSELECT\n    sample,\n    chromosome,\n    int_pos,\n    mod_variant AS alt_allele\nFROM\n    temp_ref\nWHERE\n    sample = '{{alt_parent_name}}';\n")
+get_ipython().run_cell_magic('sql', '', "CREATE\nOR REPLACE TABLE ref_parent AS\nSELECT\n    sample,\n    chromosome,\n    int_pos,\n    mod_variant AS ref_allele\nFROM\n    temp_ref\nWHERE\n    sample = '{{ref_parent_name}}';\n\nCREATE\nOR REPLACE VIEW alt_parent AS\nSELECT\n    sample,\n    chromosome,\n    int_pos,\n    mod_variant AS alt_allele\nFROM\n    temp_ref\nWHERE\n    sample = '{{alt_parent_name}}';\n")
 
 
 # In[49]:

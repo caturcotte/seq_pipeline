@@ -4,6 +4,7 @@ reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
 
 ref_parent: "w1118"
 alt_parent: "oregonr"
+paternal_sample: "c2en"
 
 chromosomes:
   "chr2L": 23513712
@@ -11,7 +12,7 @@ chromosomes:
   "chr3L": 28110227
   "chr3R": 32079331
   "chrX": 23542271
-  "chrY": 3667352
+  #  "chrY": 3667352
 
 min_qual: 150
 min_depth: 0
@@ -23,12 +24,14 @@ mask_repeats: False # masking repeats is NOT compatible with MSA output
 # /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
 data_locations:
   illumina_data: "/users/c/a/cannecar/ndj_progeny/illumina_data"
+  illumina_data2: "/users/c/a/cannecar/"
   nanopore_data: "/users/c/a/cannecar/ndj_progeny/nanopore_data"
 
 envmodules:
   bowtie2: "bowtie2/2.4.5"
   minimap2: "minimap2/2.26"
   repeatmasker: "repeatmasker/4.1.5"
+  clair3: "clair3/1.0.10"
   sambamba: "sambamba/0.8.2"
   samtools: "samtools/1.20"
   r: "r/4.4.0"

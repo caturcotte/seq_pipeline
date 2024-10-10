@@ -5,10 +5,12 @@
 args <- commandArgs(trailingOnly = TRUE)
 sliding_window_outcome<-args[1]
 outfile<-args[2]
-
+# sliding_window_outcome <- "WT-F1-017.bmm_allele_freqs.txt"
+# outfile <- "bmm_test_out.txt"
 cutoffs<-function(p1,p2,alpha,beta)
 {
-	return(beta(alpha+p1,beta+p2)/beta(alpha,beta));
+	# return(beta(alpha+p1,beta+p2)/beta(alpha,beta));
+	return(beta(alpha+p1,beta+p2)/beta(alpha,beta))
 }
 
 beta_prob<-function(y,alpha_v,beta_v)
@@ -16,8 +18,8 @@ beta_prob<-function(y,alpha_v,beta_v)
 	alpha_v[alpha_v==0]=100000000
 	beta_v[beta_v==0] = 100000000
 
-	#print(alpha_v)
-	#print(beta_v)
+	# print(alpha_v)
+	# print(beta_v)
 	return ((y^(alpha_v-1)*(1-y)^(beta_v-1))/beta(alpha_v, beta_v))
 }
 
@@ -46,7 +48,6 @@ mix_beta_model<-function(x,data,z,p_)
 	#cat("now running it with ",x," ",p,"\n",file="data1.txt", sep="\t", append=TRUE)
 	alpha<-x[1:3];
 	beta<-x[4:6];
-	#print(x)
 	midterm<-c();
 	for(j in 1:3)
 	{
@@ -85,18 +86,28 @@ prob<-function(z)
 
 m_step<-function(x,data,z,p)
 {
-	v<-tryCatch({
-				suppressWarnings(nlm(f=mix_beta_model,p=x,data=data,p_=p,z=z,print.level=0))
-			},
-			error = function(cond){
-				return(NA)
-			},
-			warning= function(cond){
-				#print(cond)
-				return(NULL)
-			},
-			finally={}
-	)
+  # v <-nlm(
+  #   f=mix_beta_model,
+  #   p=x,
+  #   data=data,
+  #   z=z,
+  #   p_=p
+  #   # print.level=2,
+  # )
+  v <- optim(x, mix_beta_model, data=data, p_=p, z=z)
+	# v<-tryCatch({
+	# 			suppressWarnings((f=mix_beta_model,p=x,data=data,p_=p,z=z,print.level=0))
+	# 		},
+	# 		error = function(cond){
+	# 		  # print(cond)
+	# 			return(NA)
+	# 		},
+	# 		warning= function(cond){
+	# 			print(cond)
+	# 			return(NULL)
+	# 		},
+	# 		finally={}
+	# )
 	return (v);
 }
 #####
@@ -112,8 +123,8 @@ main_f<-function(filename)
 	data<-rep(as.numeric(levels(k[,1]))[k[,1]],k[,2])
 	data <- data + 100
 	data <- data/200
-	data[data==0] = 0.00001
-	data[data==1] = 1-0.00001
+	data[data==0] <- 0.00001
+	data[data==1] <- 1-0.00001
 	#d[,3]<-d[,3]+100
 	#d[,3]<-d[,3]/200
 	#d[d[,3]==0,3]<-0.00001 #beta function is not defined at 0 and 1
@@ -143,10 +154,10 @@ main_f<-function(filename)
 	counter<-0;
 	v<-c();
 	diff_log=1000000;
-	v_pre = ""
+	v_pre <- ""
 	while(TRUE & counter < 100)
 	{
-		#cat("counter: ",counter," \n");
+		# cat("counter: ",counter," \n");
 		#z<-model.matrix(~0 + as.factor(z));
 		p<-prob(z);
 		#cat("p ",p,"\n");
@@ -154,19 +165,20 @@ main_f<-function(filename)
 		#v<-nlm(f=mix_beta_model,p=x,data=data,p_=p,z=z)
 		#v<-nlm(f=mix_beta_model,p=x,data=data,p_=p,z=z,print.level=2)
 		v<-m_step(x,data,z,p)
-
 		if(anyNA(v))
 		{
 			v<-v_pre;
 			break;
 		}
+    
 		else
 		{
 			v_pre<-v;
 		}
 
 
-		if(length(v$estimate[v$estimate>50]))
+		# if(length(v$estimate[v$estimate>50]))
+		if(length(v$par[v$par>50]))
 		{
 			break;
 		}
@@ -174,13 +186,18 @@ main_f<-function(filename)
 		#v<-nlm(f=mix_beta_model_log_function,p=x,data=data,p_=p,z=z)
 		#e-step
 		#z<-e_step(v$par,data,p)
-		z<-e_step(v$estimate,data,p)
-		x<-v$estimate;
-		if(abs(v$minimum-diff_log)<0.2)
+		# print(v)
+		# z<-e_step(v$estimate,data,p)
+		z<-e_step(v$par,data,p)
+		# x<-v$estimate;
+		x<-v$par;
+		if(abs(v$value-diff_log)<0.2)
+		# if(abs(v$minimum-diff_log)<0.2)
 		{
 			break;
 		}
-		diff_log<-v$minimum;
+		diff_log<-v$value;
+		# diff_log<-v$minimum;
 		counter<-counter+1;
 		#cat(v)
 		#produce the histogram
@@ -188,7 +205,9 @@ main_f<-function(filename)
 	#return (v)
 	#while
 	#output
-	x<-v$estimate
+	# x<-v$estimate
+	x<-v$par
+	# print(x)
 	#rownames(z)<-d[,3];
 	#t<-z[z[,1]<z[,2] & z[,2]>z[,3],]
 	s<-seq(0.001,0.99,by=0.001)
@@ -232,3 +251,4 @@ main_f<-function(filename)
 
 }
 main_f(sliding_window_outcome)
+

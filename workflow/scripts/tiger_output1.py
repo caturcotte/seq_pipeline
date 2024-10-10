@@ -172,6 +172,7 @@ dm6_chrom_lengths = list(snakemake.config['chromosomes'].values())
 
 tiger_chrom_len_dict = dict(zip([1,2,3,4,5,6], dm6_chrom_lengths))
 tiger_chrom_name_dict = dict(zip(dm6_fasta_names, [1,2,3,4,5,6]))
+tiger_chrom_name_dict_swap = dict(zip([str(i) for i in [1,2,3,4,5,6]], dm6_fasta_names))
 
 ref_parental_genotype = 'w1118' #change this to your reference genotype
 alt_parental_genotype = 'oregonr' #change this to your alternate parental genotype
@@ -188,7 +189,7 @@ tiger_marker_df = create_TIGER_master_df(
     snakemake.input['co_estimates'],
     ref_parental_genotype,
     alt_parental_genotype,
-    tiger_chrom_name_dict,
+    tiger_chrom_name_dict_swap,
     )
 tiger_marker_df.to_csv(
     snakemake.output['hmm_states'],
@@ -198,7 +199,7 @@ tiger_pre_intervals = create_state_intervals_df(
     snakemake.input['breaks'],
     ref_parental_genotype,
     alt_parental_genotype,
-    tiger_chrom_name_dict,
+    tiger_chrom_name_dict_swap,
     )
 tiger_intervals = get_marker_counts_per_interval(
     tiger_marker_df,

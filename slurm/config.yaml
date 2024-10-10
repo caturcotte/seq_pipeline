@@ -19,6 +19,8 @@ default-resources:
   slurm_extra: "'--mail-type=FAIL --mail-user=cannecar@ad.unc.edu'"
 
 set-resources:
+  # basecall:
+  #   slurm_partition: "a100-gpu"
   minimap2_idx:
     mem_mb: 40000
   align_bowtie2:
@@ -51,5 +53,14 @@ set-resources:
   run_rtiger:
     mem_mb: 50000
   process_tiger_output:
-    mem_mb: 150000
+    mem_mb: 50000
+    runtime: 2880
+  exclude_problem_snps:
+    mem_mb: 50000
+    runtime: 240
+  write_state_file:
+    mem_mb: 50000
+    runtime: 1440
+  clair3_call:
+    mem_mb: 50000
     runtime: 2880

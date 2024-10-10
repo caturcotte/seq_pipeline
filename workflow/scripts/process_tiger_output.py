@@ -2,40 +2,74 @@ import duckdb
 import modin.pandas as pd
 
 
-def read_dfs(files, db):
-    with duckdb.connect(db) as con:
-        df = con.read_csv(
-            files,
-            sep="\t",
-            columns = {
-                "sample": 'STRING',
-                "chromosome": 'STRING',
-                "position": 'UBIGINT',
-                "base_geno": 'STRING',
-                "hmm_state1": 'STRING',
-                "hmm_state2": 'STRING',
-                "reference": 'STRING',
-                "ref_reads": 'UINTEGER',
-                "variant": 'STRING',
-                "var_reads": 'UINTEGER'
-            }
-        ).df()
-    return df
-
-
-def create_master_df(df, genotype_dict):
-    df = df.replace(genotype_dict)
-    #TODO: figure out how to do this for F1 progeny
-    #for our specific cross scheme to ID crossovers, heterozygous and homozygous CB4856 calls are should all be considered CB4856
-    df['hmm_state1'] = df['hmm_state1'].replace(
-        {'het':alt_parental_genotype}
-        )
+def create_master_df(files_list: list, genotype_dict, alt_parental_genotype):
+    #this dataframe this function makes is relatively large because it gives you genotype and HMM state calls for every SNP marker across each chromosome for each sample
     
-    df['chrom_id'] = df.apply(
-        lambda row: row['sample']+"-"+str(row['chromosome']),
-        axis=1
-        )
-    return df
+    #This is closest to the 'raw' data that TIGER outputs, but this format is mostly useful for plotting and visualization of individual chromosomes for manual inspection of SNPs and crossover calls
+
+    #get list of file names for all TIGER outputs
+    # files_list = get_TIGER_files(files)
+
+    data = []
+
+    for file in files_list:
+
+        #make dataframe; adjust column names if you end up using different TIGER output files than I did (file_pattern='.CO_estimates.txt')
+        df = pd.read_csv(file, sep="\t", header=None, names = ["sample", "chromosome", "position", "base_geno", "hmm_state1", "hmm_state2",
+                                                   "reference", "ref_reads", "variant", "var_reads"])
+
+        #This dict will convert parental arabidopsis genotype calls (Col and Ler) to C. elegans genotype calls (N2 is Bristol WT, CB4856 is Hawaiian WT)
+        #Replace these values with your preferred genotype labels as needed
+        df = df.replace(genotype_dict)
+        
+        #for our specific cross scheme to ID crossovers, heterozygous and homozygous CB4856 calls are should all be considered CB4856
+        df['hmm_state1'] = df['hmm_state1'].replace({'het':alt_parental_genotype})
+        
+        #add a unique identifier for each chromosome
+        #example... BSP-OR-001-1 = (project)-(gamete)-(sample number)-(chromosome)
+        df['chrom_id'] = df.apply(lambda row: row['sample']+"-"+str(row['chromosome']), axis=1)
+
+        print(file, 'done')
+        data.append(df)
+
+    # make dataframe from all samples in data list
+    data = pd.concat(data)
+
+    return data
+# def read_dfs(files, db):
+#     with duckdb.connect(db) as con:
+#         df = con.read_csv(
+#             files,
+#             sep="\t",
+#             columns = {
+#                 "sample": 'STRING',
+#                 "chromosome": 'STRING',
+#                 "position": 'UBIGINT',
+#                 "base_geno": 'STRING',
+#                 "hmm_state1": 'STRING',
+#                 "hmm_state2": 'STRING',
+#                 "reference": 'STRING',
+#                 "ref_reads": 'UINTEGER',
+#                 "variant": 'STRING',
+#                 "var_reads": 'UINTEGER'
+#             }
+#         ).df()
+#     return df
+
+
+# def create_master_df(df, genotype_dict):
+#     df = df.replace(genotype_dict)
+#     #TODO: figure out how to do this for F1 progeny
+#     #for our specific cross scheme to ID crossovers, heterozygous and homozygous CB4856 calls are should all be considered CB4856
+#     df['hmm_state1'] = df['hmm_state1'].replace(
+#         {'het':alt_parental_genotype}
+#         )
+    
+#     df['chrom_id'] = df.apply(
+#         lambda row: row['sample']+"-"+str(row['chromosome']),
+#         axis=1
+#         )
+#     return df
 
 
 def make_transition_intervals_df(master_df):
@@ -77,9 +111,13 @@ def create_state_intervals_df(df, genotype_dict):
     #for our specific cross scheme to ID crossovers, heterozygous and homozygous CB4856 calls are should all be considered CB4856
 
 
-    df['hmm_state'] = df.apply(
-        lambda row: genotype_dict[(row['hmm_state'])], axis=1
-        )
+    # df.replace()
+    # df['hmm_state1'] = df.apply(
+    #     lambda row: genotype_dict[(row['hmm_state1'])], axis=1
+    #     )
+    # df['hmm_state2'] = df.apply(
+    #     lambda row: genotype_dict[(row['hmm_state2'])], axis=1
+    #     )
     df['chrom_id'] = df.apply(
         lambda row: row['sample']+"-"+str(row['chromosome']), axis=1
         )
@@ -128,10 +166,10 @@ if __name__ == "__main__":
         "UN":"unknown",
         '?':"?"
         }
-    df = read_dfs(snakemake.input, snakemake.output['db'])
-    tiger_marker_df = create_TIGER_master_df(
-        df, genotype_dict, snakemake.output['db']
-        )
+    tiger_marker_df = create_master_df(list(snakemake.input), genotype_dict, alt_parental_genotype)
+    # tiger_marker_df = create_TIGER_master_df(
+    #     df, genotype_dict, snakemake.output['db']
+    #     )
     tiger_pre_intervals = create_state_intervals_df(
         tiger_marker_df, genotype_dict
         )
