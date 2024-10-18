@@ -1,32 +1,62 @@
+from pathlib import Path
+
+
+rule download_dorado:
+    output:
+        f"workflow/tools/dorado/dorado-0.8.1-{os}-{arch}/bin/dorado",
+    params:
+        out_dir=lambda w, output: str(Path(output[0]).parents[2]),
+    shell:
+        "wget -qO- https://cdn.oxfordnanoportal.com/software/analysis/dorado-0.8.1-{os}-{arch}.tar.gz | tar xvz -C {params.out_dir}"
+
+
+rule download_rerio:
+    output:
+        "data/resources/rerio/download_model.py",
+    params:
+        out_dir=lambda w, output: str(Path(output[0]).parents[0]),
+    shell:
+        "git clone https://github.com/nanoporetech/rerio {params.out_dir}"
+
+
+rule download_clair3_model:
+    input:
+        "data/resources/rerio/download_model.py",
+    output:
+        "data/resources/rerio/clair3_models/r1041_e82_400bps_sup_v500/pileup.index",
+    params:
+        base_dir=lambda w, input: str(Path(input[0]).parents[0].joinpath('clair3_models/r1041_e82_400bps_sup_v500_model'))
+    shell:
+        "{input} {params.base_dir}"
+
+
 rule symlink_ref:
     input:
-        config["reference"],
+        config["reference"]['location'],
     output:
-        f"data/resources/{config['ref_name']}.fa",
+        f"data/resources/genome.fa",
     shell:
         "ln -s {input} {output}"
 
 
-rule mask_repeats:
+rule index_bam:
     input:
-        f"data/resources/{config['ref_name']}.fa",
+        "{prefix}.bam",
     output:
-        f"data/resources/{config['ref_name']}.fa.masked",
-    threads: 16
-    cache: True
+        "{prefix}.bam.bai",
     envmodules:
-        config['envmodules']['repeatmasker']
+        config['envmodules']['sambamba']
     shell:
-        'RepeatMasker -species "drosophila melanogaster" -pa {threads} -dir data/resources/ -s {input}'
+        "sambamba index {input}"
 
 
-rule mv_masked_ref:
-    input:
-        f"data/resources/{config['ref_name']}.fa.masked",
-    output:
-        f"data/resources/{config['ref_name']}_masked.fa",
-    shell:
-        "mv {input} {output}"
+# rule vcf_to_bcf:
+#     input:
+#         "{prefix}.vcf",
+#     output:
+#         "{prefix}.bcf",
+#     shell:
+#         "bcftools view -Ob -o {output} {input}"
 
 
 rule faidx_ref:
@@ -52,15 +82,15 @@ rule symlink_fastqs:
 
 rule minimap2_idx:
     input:
-        "{prefix}",
+        "{prefix}.fa",
     output:
         "{prefix}.mmi",
     threads: 8
     envmodules:
         config['envmodules']['minimap2']
-    cache: True
+    # cache: True
     shell:
-        "minimap2 -ax map-ont -d {output} {input}"
+        "minimap2 -d {output} {input}"
 
 
 rule bowtie2_build:
@@ -80,7 +110,7 @@ rule bowtie2_build:
     envmodules:
         config['envmodules']['bowtie2']
     params:
-        base=lambda w: get_ref(w.prefix, base=True)
+        base=lambda w: get_ref(w.prefix, base=True),
     shell:
         "bowtie2-build {input.ref} {params.base}"
 
@@ -100,6 +130,6 @@ rule gzip_fastq:
     input:
         "{prefix}.fastq",
     output:
-        "{prefix}.fastq.gz"
+        "{prefix}.fastq.gz",
     shell:
         "gzip {input}"

@@ -1,27 +1,28 @@
 $schema: "https://json-schema.org/draft-07/schema#"
 description: an entry in the sample sheet
 properties:
-  condition:
-    description: condition/genotype
-    type: string
-  sample_type:
-    description: whether this is a G0 male or his progeny (F1)
+  genotype:
+    description: Genotype of the sample
     type: string
   sample_num:
-    description: sample number/identifier
+    description: Number of the sample
     type: integer
-  platform:
-    description: platform the data is from
-    enum:
-      - illumina
-      - nanopore
-  location:
-    description: shorthand for a location defined in config.yaml where data is stored
+  ont_folder:
+    description: Subdirectory of the sample directory in which the pod5 folder for this sample is found
+    type: string
     type: string
   barcode:
     description: barcode number for nanopore sequences
     type: integer
+  kit:
+    description: kit used for experiment (must be same for all samples)
+    type: string
+  sample_id:
+    description: Subdirectory under the experiment ID directory in which the ont_folder for this sample is found
 required:
-  - condition
-  - platform
-  - location
+  - genotype
+  - sample_num
+  - ont_folder
+  - barcode
+  - kit
+  - sample_id

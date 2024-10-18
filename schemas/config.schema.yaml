@@ -3,30 +3,94 @@ title: DNA sequencing pipeline configuration
 description: Config file for sequencing pipeline
 type: object
 properties:
-  ref_name:
-    description: Name of the reference (can be anything)
+  ont_base_location:
+    description: Location where ONT experiments are stored
+    type: string
+  experiment_id:
+    description: Name that the experiment was saved under (should be a folder in the ONT base location)
+    type: string
+  ont_kit:
+    description: Kit used for experiment
     type: string
   reference:
-    description: Path to the reference FASTA file
-    type: string
-  ref_parent:
-    description: Name of the parent to be used as a reference (must match name in sample sheet)
-    type: string
-  alt_parent:
-    description: Name of the other parent (must match name in sample sheet)
-    type: string
-  mask_repeats:
-    description: Whether to mask repetitive sequences in the reference genome
-    type: boolean
-  data_locations:
-    description: Shorthand identifiers for data file locations and the locations that they correspond to
     type: object
-    properties:
+    name:
+      description: Name of the reference (can be anything)
+      type: string
+    location:
+      description: Path to reference FASTA file
+      type: string
+  reference_genotype:
+    description: Information about the reference genotype
+    type: object
+    name:
+      description: Name of the genotype to be used as a reference
+      type: string
+    location:
+      description: Path to FASTQ files for reference genotype
+      type: object
+      properties:
       "*":
         type: string
-    minItems: 1
+      minItems: 2
+  variant_genotype:
+    description: Information about the variant genotype
+    type: object
+    name:
+      description: Name of the variant genotype
+      type: string
+    location:
+      description: Path to FASTQ files for variant genotype
+      type: object
+      properties:
+      "*":
+        type: string
+      minItems: 2
+  paternal_genotype:
+    description: Information about the paternal genotype
+    type: object
+    name:
+      description: Name of the paternal genotype
+      type: string
+    location:
+      description: Path to FASTQ files for paternal genotype
+      type: object
+      properties:
+      "*":
+        type: string
+      minItems: 2
+  chromosomes:
+    description: Chromosomes to call variants on and their lengths
+    type: object
+    properties:
+    "*":
+      type: object
+      properties:
+      "*":
+        type: integer
+  min_qual:
+    description: Minimum quality in the reference and variant genotypes to consider a variant for analysis in the progeny
+    type: integer
+  min_depth:
+    description: Minimum depth in the reference and variant genotypes to consider a variant for analysis in the progeny
+    type: integer
+  envmodules:
+    description: Modules on longleaf to load for various rules in the pipeline
+    type: object
+    properties:
+    "*":
+      type: object
+      properties:
+        "*":
+          type: string
 required:
-  - ref_name
+  - ont_base_location
+  - experiment_id
+  - ont_kit
   - reference
-  - ref_parent
-  - alt_parent
+  - reference_genotype
+  - variant_genotype
+  - paternal_genotype
+  - chromosomes
+  - min_qual
+  - min_depth

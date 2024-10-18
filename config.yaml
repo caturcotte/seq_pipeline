@@ -1,31 +1,52 @@
-# location of the reference genome on longleaf
-ref_name: 'dm6'
-reference: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
+base_dir: '/users/c/a/cannecar/ont_data/ndj_progeny/all_data'
+ont_kit: 'SQK-NBD114_24'
+experiment_id: 'ndj_progeny'
 
-ref_parent: "w1118"
-alt_parent: "oregonr"
-paternal_sample: "c2en"
+# Name and location of the reference genome to which all reads will be aligned
+reference:
+  name: 'dm6'
+  location: '/proj/seq/data/dm6_UCSC/Sequence/WholeGenomeFasta/genome.fa'
+
+# Variants in this parent will be reworked into a new "reference" genome 
+# after variant calling
+# i.e., any variant alleles in this genotype vs. the actual reference genome 
+# above will be turned into the new reference alleles
+reference_genotype:
+  name: "w1118"
+  location: 
+    - "/users/c/a/cannecar/ndj_parents/w1118_1.fq.gz"
+    - "/users/c/a/cannecar/ndj_parents/w1118_2.fq.gz"
+
+# Variants from this parent will be re-compared to the new reference genotype
+# i.e., if there was a difference between the original reference 
+# and the new reference genotype, and:
+    # the variant genotype matches the original reference -> it will be marked
+    # as a variant
+    # the variant genotype matches the new reference -> it will be marked as a
+    # non-variant
+variant_genotype:
+  name: "oregonr"
+  location: 
+    - "/users/c/a/cannecar/ndj_parents/oregonr_1.fq.gz"
+    - "/users/c/a/cannecar/ndj_parents/oregonr_2.fq.gz"
+
+# Variants found in this parent will be excluded on chromosomes other than chromosome 2
+paternal_genotype:
+  name: "c2en"
+  location:
+    - "/users/c/a/cannecar/ndj_parents/c2en_1.fq.gz"
+    - "/users/c/a/cannecar/ndj_parents/c2en_2.fq.gz"
 
 chromosomes:
-  "chr2L": 23513712
-  "chr2R": 25286936
-  "chr3L": 28110227
-  "chr3R": 32079331
-  "chrX": 23542271
+  chr2L: 23513712
+  chr2R: 25286936
+  chr3L: 28110227
+  chr3R: 32079331
+  chrX: 23542271
   #  "chrY": 3667352
 
 min_qual: 150
 min_depth: 0
-
-mask_repeats: False # masking repeats is NOT compatible with MSA output
-# file locations to use in the sample sheet.
-# If location is set to data for paired sample A, snakemake will look for the files:
-# /work/users/<o>/<n>/<onyen>/data/A_1.fq.gz"
-# /work/users/<o>/<n>/<onyen>/data/A_2.fq.gz
-data_locations:
-  illumina_data: "/users/c/a/cannecar/ndj_progeny/illumina_data"
-  illumina_data2: "/users/c/a/cannecar/"
-  nanopore_data: "/users/c/a/cannecar/ndj_progeny/nanopore_data"
 
 envmodules:
   bowtie2: "bowtie2/2.4.5"

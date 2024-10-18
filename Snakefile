@@ -5,28 +5,36 @@ from snakemake.utils import validate
 
 
 configfile: "config.yaml"
-validate(config, "schemas/config.schema.yaml")
+# validate(config, "schemas/config.schema.yaml")
 
 
 include: "workflow/sample_sheet_functions.smk"
 
 
 sample_sheet = pd.read_csv('sample_sheet.csv')
-validate (sample_sheet, 'schemas/sample.schema.yaml')
+# validate (sample_sheet, 'schemas/sample.schema.yaml')
 sample_sheet = concat_sample_names(sample_sheet)
+sample_sheet.to_csv('test.csv')
 
-samples = get_sample_names(sample_sheet)
-progeny = get_progeny_names(sample_sheet, config)
-parents = get_parent_names(sample_sheet, config)
+all_progeny = get_progeny_names(sample_sheet)
+parents = get_parent_names(config)
+samples = all_progeny + list(parents.values())
+folders = list(sample_sheet['ont_folder'].unique())
+run_folders = [*folders, "parents"]
 
+# pod5s = get_pod5_dict(folders, config, sample_sheet)
+# progeny_dict = get_progeny_dict(sample_sheet)
+os = detect_platform()[0]
+arch = detect_platform()[1]
 
 include: "workflow/input_functions.smk"
+include: "workflow/misc.smk"
 include: "workflow/alignment.smk"
 include: "workflow/calling.smk"
-include: "workflow/misc.smk"
 include: "workflow/vcf_filtering.smk"
-include: "workflow/tiger.smk"
-include: "workflow/qc.smk"
+include: "workflow/plotting.smk"
+# include: "workflow/tiger.smk"
+# include: "workflow/qc.smk"
 
 
 localrules:
@@ -41,18 +49,16 @@ localrules:
 
 wildcard_constraints:
     sample="|".join(samples),
-    progeny="|".join(progeny),
-    aligner="|".join(["bt2", "mm2"]),
-    caller="|".join(['clair3', 'bcftools', 'phased']),
-    ref=get_ref_no_input(config, base=True, fai=False),
-    read="|".join(["_1", "_2", ""]),
-    iden="|".join(list_all_idens(sample_sheet, config)),
-    i=r"\d+",
+    progeny="|".join(all_progeny),
+    parent="|".join(parents),
+    run_folder="|".join(run_folders),
+    #aligner="|".join(["bt2", "mm2"]),
+    #caller="|".join(['clair3', 'bcftools', 'phased']),
 
-ont_samples = ["".join(["WT-F1-0", str(i)]) for i in list(range(17, 80))]
+# ont_samples = ["".join(["WT-F1-0", str(i)]) for i in list(range(17, 80))]
 rule all:
     input:
-        expand("data/tiger/{sample}/{sample}_phased.csv", sample=progeny)
+        expand("data/plots/{progeny}_phased.csv", progeny=all_progeny)
         # expand("data/tiger/{sample}/{sample}_plot1.csv", sample=ont_samples),
         # expand("data/tiger/{sample}/{sample}_plot2.csv", sample=ont_samples),
         # expand("data/tiger/{sample}/{sample}_intvls.csv", sample=ont_samples),

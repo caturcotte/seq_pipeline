@@ -1,118 +1,129 @@
 # ruleorder: merge_bams > mv_nolane_bams
 
-# rule basecall:
-#     input:
-#         pods=get_pod_files,
-#     output:
-#         "data/reads/{sample}.bam",
-#     shell:
-#         "workflow/scripts/dorado-0.8.0-linux-x64/bin/dorado basecaller --kit-name SQK-NBD114.24 sup {input} > {output}"
+
+rule symlink_pod5s:
+    input:
+        find_pod5,
+    output:
+        "data/pod5/{pod5}.pod5",
+    shell:
+        "ln -s {input} {output}"
+
+
+rule make_dorado_sample_sheet:
+    input:
+        "sample_sheet.csv",
+    output:
+        "data/resources/dorado_sheet.csv",
+    params:
+        experiment_id=config["experiment_id"],
+    run:
+        sheet = pd.read_csv(input[0])
+        sheet[[
+                "start_time",
+                "device_id",
+                "position_id",
+                "flow_cell_id",
+                "protocol_run_id",
+            ]]= sheet["ont_folder"].str.split("_", expand=True)
+        sheet.to_csv('test2.csv')
+        # sheet_for_run = sheet.loc[sheet["ont_folder"] == wildcards.pod5_folder]
+        sheet['sample_num'] = sheet['sample_num'].astype(str)
+        sheet['sample_num'] = sheet['sample_num'].str.zfill(3)
+        sheet['alias'] = sheet[['genotype', 'sample_num']].agg('_'.join, axis=1)
+        sheet['barcode'] = sheet['barcode'].astype(str)
+        sheet["barcode"] = "barcode" + sheet['barcode'].str.zfill(2)
+        sheet["experiment_id"] = params.experiment_id
+        sheet = sheet[
+            [
+                "experiment_id",
+                "kit",
+                "flow_cell_id",
+                "position_id",
+                "protocol_run_id",
+                "alias",
+                "barcode",
+            ]
+        ]
+        sheet.to_csv(output[0])
+
+
+# doing alignment at the same time at basecalling takes the same amount of time as basecalling alone
+rule ont_basecall_align_demux:
+    input:
+        dorado=f"workflow/tools/dorado/dorado-0.8.1-{os}-{arch}/bin/dorado",
+        # pods=get_all_pod5s,
+        pod5s=expand("data/pod5/{pod5}.pod5", pod5=get_all_pod5_tags),
+        ref="data/resources/genome.mmi",
+        sample_sheet="data/resources/dorado_sheet.csv",
+    output:
+        expand("data/alignments/{progeny}.bam", progeny=all_progeny)
+    params:
+        in_dir="data/alignments",
+        out_dir=lambda w, output: str(Path(output[0]).parents[0]),
+        kit=config["ont_kit"],
+        mdl="sup",
+    shell:
+        "{input.dorado} basecaller --kit-name {params.kit} {params.mdl} --reference {input.ref} --sample-sheet {input.sample_sheet} {params.in_dir} | {input.dorado} demux --sample_sheet={input.sample_sheet} --output-dir={params.out_dir}"
 
 
 rule align_bowtie2:
     input:
-        reads=get_reads_to_map,
-        ref=get_ref_bowtie2,
+        reads=["data/reads/{parent}_1.fq.gz", "data/reads/{parent}_2.fq.gz"],
+        ref=multiext(
+            "data/resources/genome",
+            ".1.bt2",
+            ".2.bt2",
+            ".3.bt2",
+            ".4.bt2",
+            ".rev.1.bt2",
+            ".rev.2.bt2",
+        ),
     output:
-        temp("data/alignments/{sample}_{iden}_bt2.sam"),
+        temp("data/alignments/{parent}_raw.bam"),
     params:
-        ref_basename=lambda w: get_ref(w, base=True),
+        ref_basename="data/resources/genome",
     threads: 32
-    conda:
-        "envs/bowtie2.yaml"
-    shell:
-        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} --rg-id {wildcards.iden} --rg 'SM:{wildcards.sample}' > {output}"
-
-
-rule align_minimap2:
-    input:
-        reads=get_reads_to_map,
-        ref=get_ref_minimap2,
-    output:
-        temp("data/alignments/{sample}_{iden}_mm2.sam"),
-    threads: 32
-    conda:
-        "envs/minimap2.yaml"
-    shell:
-        "minimap2 -ax lr:hq {input.ref} -R '@RG\\tID:{wildcards.iden}\\tSM:{wildcards.sample}' -t {threads} -o {output} {input.reads}"
-
-
-rule sam2bam:
-    input:
-        "data/alignments/{sample}_{iden}_{aligner}.sam",
-    output:
-        temp("data/alignments/{sample}_{iden}_{aligner}.bam"),
     envmodules:
-        config['envmodules']['samtools']
+        config["envmodules"]["bowtie2"],
+    # conda:
+    #     "envs/bowtie2.yaml"
     shell:
-        "samtools view -1 -o {output} {input}"
+        "bowtie2 -x {params.ref_basename} -1 {input.reads[0]} -2 {input.reads[1]} -p {threads} | samtools view -1 -o {output}"
 
 
 rule fix_mate_pairs:
     input:
-        get_aligned_reads,
+        "data/alignments/{parent}_raw.bam",
     output:
-        temp("data/alignments/{sample}_{iden}.bam"),
+        temp("data/alignments/{parent}_fixed.bam"),
     envmodules:
-        config['envmodules']['samtools']
+        config["envmodules"]["samtools"],
     shell:
         "samtools fixmate -m -O bam,level=1 {input} {output}"
 
 
 rule sort_bams:
     input:
-        "data/alignments/{sample}_{iden}.bam",
+        "data/alignments/{parent}_fixed.bam",
     output:
-        temp("data/alignments/{sample}_{iden}_sort.bam"),
+        temp("data/alignments/{parent}_sorted.bam"),
     threads: 8
     envmodules:
-        config['envmodules']['samtools']
+        config["envmodules"]["samtools"],
     shell:
         "samtools sort {input} -l 1 -o {output} --threads {threads}"
 
 
-# rule mv_nolane_bams:
-#     input:
-#         "data/alignments/{sample}_{sample}_sort.bam",
-#     output:
-#         temp("data/alignments/{sample}.bam"),
-#     shell:
-#         "mv {input} {output}"
-
-
-rule merge_bams:
-    input:
-        get_alns_to_merge,
-    output:
-        temp("data/alignments/{sample}.bam"),
-    threads: 4
-    envmodules:
-        config['envmodules']['sambamba']
-    script:
-        "scripts/mv_or_merge_bams.py"
-    # shell:
-    #     "sambamba merge -t {threads} {output} {input}"
-
-
+# marking duplicates not necessary for non-PCR based Nanopore kits
 rule mark_duplicates:
     input:
-        bam="data/alignments/{sample}.bam",
-        ref=get_ref,
+        bam="data/alignments/{parent}_sorted.bam",
+        ref="data/resources/genome",
     output:
-        bam="data/alignments/{sample}_markdup.bam",
+        "data/alignments/{parent}.bam",
     threads: 4
     envmodules:
-        config['envmodules']['sambamba']
+        config["envmodules"]["sambamba"],
     shell:
-        "sambamba markdup -t {threads} {input.bam} {output.bam}"
-
-
-rule index_bams:
-    input:
-        "data/alignments/{sample}_markdup.bam",
-    output:
-        "data/alignments/{sample}_markdup.bam.bai",
-    envmodules:
-        config['envmodules']['sambamba']
-    shell:
-        "sambamba index {input}"
+        "sambamba markdup -t {threads} {input.bam} {output}"

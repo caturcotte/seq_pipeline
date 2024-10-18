@@ -19,6 +19,11 @@ default-resources:
   slurm_extra: "'--mail-type=FAIL --mail-user=cannecar@ad.unc.edu'"
 
 set-resources:
+  ont_basecall_align_demux:
+    mem_mb: 24000
+    runtime: 2880
+    slurm_partition: "a100-gpu"
+    slurm_extra: "'--qos=gpu_access' '--gres=gpu:1'"
   # basecall:
   #   slurm_partition: "a100-gpu"
   minimap2_idx:

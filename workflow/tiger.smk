@@ -1,46 +1,3 @@
-rule convert_tsv_to_parquet:
-    input:
-        "data/tsvs/{sample}.tsv",
-    output:
-        "data/parquets/{sample}_converted.parquet",
-    conda:
-        "envs/convert_tsv_to_parquet.yaml"
-    params:
-        short=lambda w: check_if_short_read(w)
-    script:
-        "scripts/convert_tsv_to_parquet.py"
-
-
-rule rearrange_reference_parquet:
-    input:
-        ref=f"data/parquets/{config['ref_parent']}_converted.parquet",
-        alt=f"data/parquets/{config['alt_parent']}_converted.parquet",
-    output:
-        "data/parquets/reference.parquet",
-        db=temp("reference.db"),
-    params:
-        ref_name=config["ref_parent"],
-        alt_name=config["alt_parent"],
-        min_qual=config["min_qual"],
-        min_depth=config["min_depth"],
-    # threads: 16
-    shell:
-        "ipython workflow/scripts/rearrange_reference_parquet.py -- {input.ref} {input.alt} {params.ref_name} {params.alt_name} {params.min_qual} {params.min_depth} {output[0]} {output.db}"
-
-
-rule rearrange_sample_parquet:
-    input:
-        smp="data/parquets/{sample}_converted.parquet",
-        ref="data/parquets/reference.parquet",
-        pat=f"data/parquets/{config['paternal_sample']}_converted.parquet",
-    output:
-        "data/parquets/{sample}_rearranged.parquet",
-        temp("{sample}.db"),
-    # threads: 16
-    shell:
-        "ipython workflow/scripts/rearrange_sample_parquet.py -- {wildcards.sample} {input.ref} {input.pat} {input.smp} {output[0]}"
-
-
 rule make_input_output_list_files:
     input:
         expand("data/parquets/{sample}_rearranged.parquet", sample=progeny),
@@ -48,12 +5,12 @@ rule make_input_output_list_files:
         temp("data/parquets/all_samples_input.txt"),
         temp("data/parquets/all_samples_output.txt"),
     run:
-        with open(output[0], 'w') as file:
+        with open(output[0], "w") as file:
             for i in input:
                 file.write(f"{i}\n")
-        with open(output[1], 'w') as file:
+        with open(output[1], "w") as file:
             for i in input:
-                basename = Path(i).stem.rstrip('_rearranged')
+                basename = Path(i).stem.rstrip("_rearranged")
                 file.write(f"data/tiger/{basename}/{basename}_phased.csv\n")
 
 
@@ -63,9 +20,9 @@ rule exclude_problem_snps:
         "data/parquets/all_samples_output.txt",
     output:
         # expand("data/tiger/{sample}/{sample}.tiger_input.txt", sample=progeny)
-        expand("data/tiger/{sample}/{sample}_phased.csv", sample=progeny)
+        expand("data/tiger/{sample}/{sample}_phased.csv", sample=progeny),
     params:
-        chr_names=list(config['chromosomes'].keys())
+        chr_names=list(config["chromosomes"].keys()),
     shell:
         "ipython workflow/scripts/remove_problem_snps.py -- {input[0]} {input[1]} {params.chr_names}"
 
@@ -114,8 +71,8 @@ rule make_chrom_lengths_file:
         "data/resources/chrom_lengths_tiger.txt",
     run:
         chr_num = 1
-        with open(output[0], 'w') as file:
-            for i in config['chromosomes']:
+        with open(output[0], "w") as file:
+            for i in config["chromosomes"]:
                 file.write(f"{chr_num}\t{config['chromosomes'][i]}\n")
                 chr_num += 1
 
@@ -246,6 +203,7 @@ rule smooth_breakpoints:
     shell:
         "perl workflow/scripts/TIGER_scripts/breaks_smoother.pl -b {input} -o {output}"
 
+
 rule fix_break_files:
     input:
         "data/tiger/{sample}/{sample}.CO_estimates.smoothed.breaks.txt",
@@ -253,7 +211,8 @@ rule fix_break_files:
         "data/tiger/{sample}/{sample}.CO_estimates.smoothed.breaks.fixed.txt",
     shell:
         "sed 's/\t$//' {input} > {output}"
-        
+
+
 rule process_tiger_output:
     input:
         # co_estimates=aggregate_input,
@@ -270,11 +229,12 @@ rule process_tiger_output:
         #     ),
     output:
         hmm_states="data/tiger/{sample}/{sample}_hmm_states.csv",
-        hmm_intervals="data/tiger/{sample}/{sample}_hmm_intervals.csv"
+        hmm_intervals="data/tiger/{sample}/{sample}_hmm_intervals.csv",
     conda:
         "envs/process_tiger_outputs.yaml"
     script:
         "scripts/tiger_output1.py"
+
 
 rule make_plot_inputs:
     input:
@@ -286,7 +246,7 @@ rule make_plot_inputs:
         plot2="data/tiger/{sample}/{sample}_plot2.csv",
         invls="data/tiger/{sample}/{sample}_intvls.csv",
     params:
-        chromosomes=list(config['chromosomes'].keys())
+        chromosomes=list(config["chromosomes"].keys()),
     conda:
         "envs/write_state_file.yaml"
     script:
