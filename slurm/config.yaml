@@ -20,8 +20,8 @@ default-resources:
 
 set-resources:
   ont_basecall_align_demux:
-    mem_mb: 24000
-    runtime: 2880
+    mem_mb: 12000
+    runtime: 5760
     slurm_partition: "a100-gpu"
     slurm_extra: "'--qos=gpu_access' '--gres=gpu:1'"
   # basecall:

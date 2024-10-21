@@ -90,7 +90,7 @@ rule minimap2_idx:
         config['envmodules']['minimap2']
     # cache: True
     shell:
-        "minimap2 -d {output} {input}"
+        "minimap2 -x lr:hq -d {output} {input}"
 
 
 rule bowtie2_build:

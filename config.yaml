@@ -1,5 +1,5 @@
 base_dir: '/users/c/a/cannecar/ont_data/ndj_progeny/all_data'
-ont_kit: 'SQK-NBD114_24'
+ont_kit: 'SQK-NBD114-24'
 experiment_id: 'ndj_progeny'
 
 # Name and location of the reference genome to which all reads will be aligned

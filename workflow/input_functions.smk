@@ -17,6 +17,9 @@ def get_all_pod5_files(w, config=config):
 def get_all_pod5_tags(w, config=config):
     in_dir = Path(config['base_dir'])
     pod5s = in_dir.glob('*/*/pod5/*.pod5')
+    with open('test2.txt', 'w') as file:
+        for i in pod5s:
+            file.write(str(i.stem))
     return [str(i.stem) for i in pod5s]
 
 def find_pod5(w, config=config):

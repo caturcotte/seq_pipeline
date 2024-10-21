@@ -1,6 +1,6 @@
 # ruleorder: merge_bams > mv_nolane_bams
 
-
+# ignore - moved them all because glob wassn't working
 rule symlink_pod5s:
     input:
         find_pod5,
@@ -27,7 +27,6 @@ rule make_dorado_sample_sheet:
                 "protocol_run_id",
             ]]= sheet["ont_folder"].str.split("_", expand=True)
         sheet.to_csv('test2.csv')
-        # sheet_for_run = sheet.loc[sheet["ont_folder"] == wildcards.pod5_folder]
         sheet['sample_num'] = sheet['sample_num'].astype(str)
         sheet['sample_num'] = sheet['sample_num'].str.zfill(3)
         sheet['alias'] = sheet[['genotype', 'sample_num']].agg('_'.join, axis=1)
@@ -45,26 +44,27 @@ rule make_dorado_sample_sheet:
                 "barcode",
             ]
         ]
-        sheet.to_csv(output[0])
+        sheet.to_csv(output[0], index=False)
 
 
 # doing alignment at the same time at basecalling takes the same amount of time as basecalling alone
 rule ont_basecall_align_demux:
     input:
         dorado=f"workflow/tools/dorado/dorado-0.8.1-{os}-{arch}/bin/dorado",
-        # pods=get_all_pod5s,
-        pod5s=expand("data/pod5/{pod5}.pod5", pod5=get_all_pod5_tags),
+        #TODO generalize this
+        pod5s=[str(i) for i in Path("/users/c/a/cannecar/ndj_progeny/all_pod5s/").glob("*.pod5")],
         ref="data/resources/genome.mmi",
         sample_sheet="data/resources/dorado_sheet.csv",
     output:
-        expand("data/alignments/{progeny}.bam", progeny=all_progeny)
+        multialn="data/alignments/multialn.bam",
+        demux=expand("data/alignments/{progeny}.bam", progeny=all_progeny),
     params:
-        in_dir="data/alignments",
-        out_dir=lambda w, output: str(Path(output[0]).parents[0]),
+        in_dir="/users/c/a/cannecar/ndj_progeny/all_pod5s/",
+        out_dir=lambda w, output: str(Path(output[1]).parents[0]),
         kit=config["ont_kit"],
         mdl="sup",
     shell:
-        "{input.dorado} basecaller --kit-name {params.kit} {params.mdl} --reference {input.ref} --sample-sheet {input.sample_sheet} {params.in_dir} | {input.dorado} demux --sample_sheet={input.sample_sheet} --output-dir={params.out_dir}"
+        "{input.dorado} basecaller {params.mdl} --kit-name \'{params.kit}\' --reference {input.ref} --sample-sheet {input.sample_sheet} {params.in_dir} > {output.multialn} && {input.dorado} demux --kit-name \'{params.kit}\' --sample-sheet={input.sample_sheet} --no-trim --sort-bam --output-dir={params.out_dir} {output.multialn}"
 
 
 rule align_bowtie2:
